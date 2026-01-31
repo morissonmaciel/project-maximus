@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic Terminal</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0e14;
+      --bg-secondary: #1a1f2e;
+      --bg-tertiary: #252b3b;
+      --text-primary: #e0e6ed;
+      --text-secondary: #8b949e;
+      --text-muted: #5c6370;
+      --accent-cyan: #00d9ff;
+      --accent-green: #00ff88;
+      --accent-yellow: #ffcc00;
+      --accent-red: #ff4757;
+      --accent-purple: #bf7fff;
+      --border-color: #2d3548;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 20px;
+      color: var(--accent-cyan);
+    }
+
+    .logo-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .logo-version {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Status Indicator */
+    .status-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.green {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    .status-dot.yellow {
+      background: var(--accent-yellow);
+      box-shadow: 0 0 10px var(--accent-yellow);
+    }
+
+    .status-dot.red {
+      background: var(--accent-red);
+      box-shadow: 0 0 10px var(--accent-red);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .api-key-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .api-key-btn:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .settings-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .settings-btn:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+    }
+
+    /* Chat Container */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-container::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    .chat-container::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .message.assistant .message-avatar {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+    }
+
+    .message.user .message-avatar {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+    }
+
+    .message-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user .message-content {
+      background: var(--bg-tertiary);
+      border-color: var(--accent-cyan);
+      border-width: 1px;
+    }
+
+    .message-content code {
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--accent-cyan);
+    }
+
+    .message-content pre {
+      background: var(--bg-primary);
+      padding: 10px;
+      border-radius: 6px;
+      margin: 4px 0;
+      overflow-x: auto;
+    }
+
+    .message-content pre code {
+      background: none;
+      padding: 0;
+      color: var(--text-primary);
+    }
+
+    /* Markdown styling - tight spacing */
+    .message-content {
+      line-height: 1.4;
+    }
+
+    .message-content h1,
+    .message-content h2,
+    .message-content h3,
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 {
+      color: var(--accent-cyan);
+      margin: 8px 0 4px 0;
+      font-weight: 600;
+    }
+
+    .message-content h1 { font-size: 1.3em; }
+    .message-content h2 { font-size: 1.15em; }
+    .message-content h3 { font-size: 1.05em; }
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 { font-size: 1em; }
+
+    .message-content p {
+      margin: 0;
+    }
+
+    .message-content ul,
+    .message-content ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .message-content li {
+      margin: 0;
+    }
+
+    .message-content blockquote {
+      border-left: 3px solid var(--accent-purple);
+      margin: 4px 0;
+      padding: 2px 10px;
+      background: var(--bg-primary);
+      border-radius: 0 4px 4px 0;
+      color: var(--text-secondary);
+    }
+
+    /* Remove extra margins on first/last elements */
+    .message-content > *:first-child {
+      margin-top: 0;
+    }
+
+    .message-content > *:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-content a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+
+    .message-content a:hover {
+      text-decoration: underline;
+    }
+
+    .message-content hr {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: 8px 0;
+    }
+
+    .message-content table {
+      border-collapse: collapse;
+      margin: 4px 0;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    .message-content th,
+    .message-content td {
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    .message-content th {
+      background: var(--bg-tertiary);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .message-content strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .message-content em {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .message-content img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin: 4px 0;
+    }
+
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 8px 0;
+    }
+
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Tool Call Indicator */
+    .message.tool-message {
+      align-items: flex-start;
+    }
+
+    .message.tool-message .message-avatar {
+      background: var(--accent-purple);
+    }
+
+    .tool-call-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tool-call {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-primary);
+      border: 1px solid var(--accent-purple);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .tool-call-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .tool-call-icon.running {
+      animation: pulse-icon 1.5s infinite;
+    }
+
+    @keyframes pulse-icon {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .tool-call-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tool-call-name {
+      color: var(--accent-purple);
+      font-weight: 600;
+      font-family: inherit;
+    }
+
+    .tool-call-reason {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+      padding-left: 4px;
+    }
+
+    .tool-call.success {
+      border-color: var(--accent-green);
+    }
+
+    .tool-call.success .tool-call-name {
+      color: var(--accent-green);
+    }
+
+    .tool-call.error {
+      border-color: var(--accent-red);
+    }
+
+    .tool-call.error .tool-call-name {
+      color: var(--accent-red);
+    }
+
+    /* Welcome Message */
+    .welcome {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .welcome-ascii {
+      font-size: 10px;
+      line-height: 1.2;
+      color: var(--accent-cyan);
+      margin-bottom: 20px;
+      opacity: 0.7;
+    }
+
+    .welcome h2 {
+      font-size: 16px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .welcome p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Input Area */
+    .input-area {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 16px 20px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .input-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-prefix {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-75%);
+      color: var(--accent-cyan);
+      font-size: 14px;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    #messageInput {
+      width: 100%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px 12px 32px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      min-height: 44px;
+      max-height: 200px;
+      transition: border-color 0.2s;
+    }
+
+    #messageInput:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    #messageInput::placeholder {
+      color: var(--text-muted);
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      color: var(--bg-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 480px;
+      transform: scale(0.9);
+      transition: transform 0.3s;
+    }
+
+    .modal.wide {
+      max-width: 680px;
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .modal p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .modal input {
+      width: 100%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .modal select {
+      width: 100%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .modal input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.cancel {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .modal-btn.cancel:hover {
+      border-color: var(--text-secondary);
+    }
+
+    .modal-btn.save {
+      background: var(--accent-cyan);
+      border: none;
+      color: var(--bg-primary);
+      font-weight: 600;
+    }
+
+    .modal-btn.save:hover {
+      background: var(--accent-green);
+    }
+
+    .modal-btn.oauth {
+      background: var(--accent-purple);
+      border: none;
+      color: white;
+      font-weight: 600;
+    }
+
+    .modal-btn.oauth:hover {
+      opacity: 0.9;
+    }
+
+    .modal-btn.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .notice-body {
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .auth-actions {
+      margin-top: 8px;
+    }
+
+    /* Settings Modal */
+    .settings-layout {
+      display: flex;
+      gap: 16px;
+    }
+
+    .settings-sidebar {
+      width: 160px;
+      border-right: 1px solid var(--border-color);
+      padding-right: 12px;
+    }
+
+    .settings-nav-btn {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .settings-nav-btn.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-primary);
+    }
+
+    .settings-nav-btn:hover:not(.active) {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .settings-panel {
+      flex: 1;
+    }
+
+    .settings-panel.hidden {
+      display: none;
+    }
+
+    .settings-section {
+      margin-bottom: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+    }
+
+    .doc-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border-color);
+      font-size: 12px;
+    }
+
+    .doc-item:last-child {
+      border-bottom: none;
+    }
+
+    .doc-name {
+      color: var(--text-secondary);
+      word-break: break-all;
+    }
+
+    .settings-section h4 {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      margin-bottom: 8px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--border-color);
+      font-size: 12px;
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+    .settings-label {
+      color: var(--text-secondary);
+    }
+
+    .settings-value {
+      color: var(--text-primary);
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+
+    .settings-muted {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    /* Provider Selector */
+    .provider-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+
+    .provider-card {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .provider-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    .provider-card.active {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 1px rgba(0, 217, 255, 0.25);
+    }
+
+    .provider-card.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .provider-card.disabled:hover {
+      border-color: var(--border-color);
+      transform: none;
+    }
+
+    .provider-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .provider-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Auth Tabs */
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .auth-tab {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-primary);
+    }
+
+    .auth-tab:hover:not(.active) {
+      border-color: var(--accent-cyan);
+    }
+
+    .auth-panel {
+      display: none;
+    }
+
+    .auth-panel.active {
+      display: block;
+    }
+
+    /* OAuth specific */
+    .oauth-url-box {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      word-break: break-all;
+      font-size: 11px;
+      color: var(--accent-cyan);
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .oauth-steps {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .oauth-steps li {
+      margin-bottom: 8px;
+      padding-left: 8px;
+    }
+
+    .oauth-steps code {
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-yellow);
+    }
+
+    /* Footer Stats */
+    .footer-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      color: var(--accent-cyan);
+    }
+
+    .stat-clickable {
+      cursor: pointer;
+      padding: 2px 6px;
+      margin: -2px -6px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .stat-clickable:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 12px;
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success {
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .toast.error {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .toast.info {
+      border-color: var(--accent-yellow);
+      color: var(--accent-yellow);
+    }
+
+    .modal-btn.save.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .modal-feedback {
+      font-size: 11px;
+      margin-bottom: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .modal-feedback.show {
+      display: block;
+    }
+
+    .modal-feedback.error {
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .modal-feedback.success {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">></span>
+      <span class="logo-text">AGENTIC_TERMINAL</span>
+      <span class="logo-version">v1.0.0</span>
+    </div>
+    <div class="status-container">
+      <div class="status-indicator">
+        <div class="status-dot red" id="statusDot"></div>
+        <span class="status-text" id="statusText">DISCONNECTED</span>
+      </div>
+      <button class="settings-btn" id="settingsBtn">
+        <span>[SETTINGS]</span>
+        <span>Configure</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="chat-container" id="chatContainer">
+    <div class="welcome">
+      <pre class="welcome-ascii">
+     _                    _   _      
+    / \   __ _  ___ _ __ | |_| | ___ 
+   / _ \ / _` |/ _ \ '_ \| __| |/ _ \
+  / ___ \ (_| |  __/ | | | |_| |  __/
+ /_/   \_\__, |\___|_| |_|\__|_|\___|
+         |___/                       
+      </pre>
+      <h2>Welcome to Agentic Terminal</h2>
+      <p>Select a provider and configure access to start chatting</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrapper">
+      <div class="input-container">
+        <span class="input-prefix">$</span>
+        <textarea
+          id="messageInput"
+          placeholder="Type your message..."
+          rows="1"
+          disabled
+        ></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" disabled>
+        <span>SEND</span>
+        <span>[ENTER]</span>
+      </button>
+    </div>
+    <div class="footer-stats">
+      <div class="stat">
+        <span class="stat-label">WS:</span>
+        <span class="stat-value" id="wsStatus">disconnected</span>
+      </div>
+      <div class="stat stat-clickable" id="providerStat">
+        <span class="stat-label">PROVIDER:</span>
+        <span class="stat-value" id="providerStatus">not selected</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">MODEL:</span>
+        <span class="stat-value" id="modelStatus">--</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">LATENCY:</span>
+        <span class="stat-value" id="latencyStatus">--ms</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal wide">
+      <h3>[SETTINGS] Configuration</h3>
+      <p class="settings-muted">Manage providers, authentication, and models.</p>
+
+      <div class="settings-layout">
+        <div class="settings-sidebar">
+          <button class="settings-nav-btn active" data-panel="anthropic">Anthropic</button>
+          <button class="settings-nav-btn" data-panel="openai-codex">OpenAI Codex</button>
+          <button class="settings-nav-btn" data-panel="ollama">Ollama</button>
+          <button class="settings-nav-btn" data-panel="web">Web</button>
+          <button class="settings-nav-btn" data-panel="memory">Memory</button>
+        </div>
+
+        <div class="settings-panel" id="settingsPanelAnthropic">
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="apikey">[API_KEY]</button>
+            <button class="auth-tab" data-tab="oauth">[OAUTH]</button>
+          </div>
+
+          <div class="modal-feedback" id="modalFeedback"></div>
+
+          <!-- API Key Panel -->
+          <div class="auth-panel active" id="apikeyPanel">
+            <p>Enter your Anthropic API key (sk-ant-api...).</p>
+            <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+            <div class="modal-actions auth-actions">
+              <button class="modal-btn save" id="modalSave">SAVE_KEY</button>
+            </div>
+          </div>
+
+          <!-- OAuth Panel -->
+          <div class="auth-panel" id="oauthPanel">
+            <p>Authenticate with your Claude Pro/Max account via OAuth (token used directly).</p>
+
+            <div id="oauthStep1">
+              <div class="modal-actions">
+                <button class="modal-btn oauth" id="startOAuthBtn">START_OAUTH</button>
+              </div>
+            </div>
+
+            <div id="oauthStep2" class="hidden">
+              <ol class="oauth-steps">
+                <li>Click the link below to open the authorization page</li>
+                <li>Log in and authorize the application</li>
+                <li>Copy the code from the URL (format: <code>code#state</code>)</li>
+                <li>Paste it below and click Complete</li>
+              </ol>
+
+              <div class="oauth-url-box" id="oauthUrlBox">Generating URL...</div>
+
+              <button class="modal-btn" style="margin-bottom: 12px; width: 100%;" id="openOAuthUrl">OPEN_AUTH_URL</button>
+
+              <input type="text" id="oauthCodeInput" placeholder="Paste code#state here..." />
+
+              <div class="modal-actions">
+                <button class="modal-btn cancel" id="oauthBackBtn">BACK</button>
+                <button class="modal-btn save" id="completeOAuthBtn">COMPLETE</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h4>Usage (Last Response)</h4>
+            <div class="settings-row">
+              <span class="settings-label">Model</span>
+              <span class="settings-value" id="anthropicModel">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Max tokens</span>
+              <span class="settings-value" id="anthropicMaxTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Input tokens</span>
+              <span class="settings-value" id="anthropicInputTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Output tokens</span>
+              <span class="settings-value" id="anthropicOutputTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Cache create</span>
+              <span class="settings-value" id="anthropicCacheCreate">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Cache read</span>
+              <span class="settings-value" id="anthropicCacheRead">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Total input</span>
+              <span class="settings-value" id="anthropicTotalInput">--</span>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h4>Rate Limits</h4>
+            <div class="settings-row">
+              <span class="settings-label">Requests</span>
+              <span class="settings-value" id="anthropicRequests">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Requests reset</span>
+              <span class="settings-value" id="anthropicRequestsReset">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Tokens</span>
+              <span class="settings-value" id="anthropicTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Tokens reset</span>
+              <span class="settings-value" id="anthropicTokensReset">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel hidden" id="settingsPanelOpenAICodex">
+          <div class="settings-section">
+            <h4>Authentication</h4>
+            <p>Authenticate with your OpenAI Codex account via OAuth.</p>
+            
+            <div id="codexOauthStep1">
+              <div class="modal-actions">
+                <button class="modal-btn oauth" id="codexStartOAuthBtn">START_OAUTH</button>
+              </div>
+            </div>
+
+            <div id="codexOauthStep2" class="hidden">
+              <ol class="oauth-steps">
+                <li>Click the link below to open the authorization page.</li>
+                <li>Log in and authorize the application.</li>
+                <li>If the browser fails to load the redirect page (localhost:1455), look at the address bar.</li>
+                <li>Copy the full URL or just the code and state (format: <code>code#state</code>).</li>
+                <li>Paste it below and click Complete.</li>
+              </ol>
+
+              <div class="oauth-url-box" id="codexOauthUrlBox">Generating URL...</div>
+
+              <button class="modal-btn" style="margin-bottom: 12px; width: 100%;" id="codexOpenOAuthUrl">OPEN_AUTH_URL</button>
+
+              <input type="text" id="codexOauthCodeInput" placeholder="Paste code#state or full URL here..." />
+
+              <div class="modal-actions">
+                <button class="modal-btn cancel" id="codexOauthBackBtn">BACK</button>
+                <button class="modal-btn save" id="codexCompleteOAuthBtn">COMPLETE</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h4>Usage (Last Response)</h4>
+            <div class="settings-row">
+              <span class="settings-label">Model</span>
+              <span class="settings-value" id="codexModel">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Max tokens</span>
+              <span class="settings-value" id="codexMaxTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Input tokens</span>
+              <span class="settings-value" id="codexInputTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Output tokens</span>
+              <span class="settings-value" id="codexOutputTokens">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel hidden" id="settingsPanelOllama">
+          <div class="settings-section">
+            <h4>Ollama Model</h4>
+            <p class="settings-muted">Select a local model to use for chat.</p>
+            <select id="ollamaModelSelect"></select>
+            <p class="settings-muted" id="ollamaStatusLine">Status: --</p>
+          </div>
+
+          <div class="settings-section">
+            <h4>Usage (Last Response)</h4>
+            <div class="settings-row">
+              <span class="settings-label">Model</span>
+              <span class="settings-value" id="ollamaModel">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Input tokens</span>
+              <span class="settings-value" id="ollamaInputTokens">--</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Output tokens</span>
+              <span class="settings-value" id="ollamaOutputTokens">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel hidden" id="settingsPanelWeb">
+          <div class="settings-section">
+            <h4>Brave Web Search</h4>
+            <p class="settings-muted">Provide a Brave Search API key to enable web_search. Get a key at api.search.brave.com.</p>
+            <input type="password" id="braveApiKeyInput" placeholder="brave API key..." />
+            <div class="modal-actions auth-actions">
+              <button class="modal-btn save" id="braveApiKeySave">SAVE_KEY</button>
+            </div>
+            <p class="settings-muted" id="braveApiKeyStatus">Status: not configured</p>
+          </div>
+        </div>
+
+        <div class="settings-panel hidden" id="settingsPanelMemory">
+          <div class="settings-section">
+            <h4>Memory Documents</h4>
+            <p class="settings-muted">Re-ingest docs from /skills to update memory.</p>
+            <div class="modal-actions auth-actions">
+              <button class="modal-btn save" id="reingestAllDocs">REINGEST_ALL</button>
+            </div>
+            <div id="docsList" style="margin-top: 12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="settingsClose">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Provider Selector -->
+  <div class="modal-overlay" id="providerOverlay">
+    <div class="modal">
+      <h3>[PROVIDER] Select Provider</h3>
+      <p class="settings-muted">Choose a provider to start this session.</p>
+      <div class="provider-grid" id="providerGrid"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel disabled" id="providerContinue">CONTINUE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notice Modal -->
+  <div class="modal-overlay" id="noticeOverlay">
+    <div class="modal">
+      <h3>[NOTICE]</h3>
+      <div class="notice-body" id="noticeMessage">Loading...</div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel disabled" id="noticeClose">PLEASE_WAIT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reload Modal -->
+  <div class="modal-overlay" id="reloadOverlay">
+    <div class="modal">
+      <h3>[RELOAD REQUIRED]</h3>
+      <div class="notice-body" id="reloadMessage">Please reload the UI.</div>
+      <div class="modal-actions">
+        <button class="modal-btn save" id="reloadConfirm">RELOAD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marked.js for markdown rendering (lightweight, ~40KB) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.6/marked.min.js"></script>
+  <script src="/config.js"></script>
+  <script>
+    const GATEWAY_URL = window.__GATEWAY_URL__ || 'ws://localhost:8081';
+
+    // Configure marked for safe rendering
+    marked.setOptions({
+      breaks: true,        // Convert \n to <br>
+      gfm: true,           // GitHub Flavored Markdown
+      headerIds: false,    // Don't add IDs to headers
+      mangle: false        // Don't mangle email addresses
+    });
+
+    // Render markdown safely
+    function renderMarkdown(text) {
+      if (!text) return '';
+      try {
+        return marked.parse(text);
+      } catch (err) {
+        console.error('[Markdown] Parse error:', err);
+        return escapeHtml(text);
+      }
+    }
+
+    let ws = null;
+    let isConnected = false;
+    let provider = null;
+    let providerReady = false;
+    let providerError = null;
+    let currentModel = null;
+    let anthropicConfigured = false;
+    let authType = null;
+    let ollamaReachable = null;
+    let ollamaModel = null;
+    let lastProviderError = null;
+    let messages = [];
+    let currentAssistantMessage = null;
+    let pingInterval = null;
+    let lastPingTime = null;
+    let pendingOAuthUrl = null;
+    let providerPromptShown = false;
+
+    // DOM Elements
+    const chatContainer = document.getElementById('chatContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    const providerOverlay = document.getElementById('providerOverlay');
+    const providerGrid = document.getElementById('providerGrid');
+    const providerContinue = document.getElementById('providerContinue');
+    const noticeOverlay = document.getElementById('noticeOverlay');
+    const noticeMessage = document.getElementById('noticeMessage');
+    const noticeClose = document.getElementById('noticeClose');
+    const reloadOverlay = document.getElementById('reloadOverlay');
+    const reloadMessage = document.getElementById('reloadMessage');
+    const reloadConfirm = document.getElementById('reloadConfirm');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const modalSave = document.getElementById('modalSave');
+    const wsStatus = document.getElementById('wsStatus');
+    const providerStatus = document.getElementById('providerStatus');
+    const providerStat = document.getElementById('providerStat');
+    const modelStatus = document.getElementById('modelStatus');
+    const latencyStatus = document.getElementById('latencyStatus');
+    const toast = document.getElementById('toast');
+    const modalFeedback = document.getElementById('modalFeedback');
+
+    // OAuth elements (Anthropic)
+    const authTabs = document.querySelectorAll('.auth-tab');
+    const apikeyPanel = document.getElementById('apikeyPanel');
+    const oauthPanel = document.getElementById('oauthPanel');
+    const oauthStep1 = document.getElementById('oauthStep1');
+    const oauthStep2 = document.getElementById('oauthStep2');
+    const startOAuthBtn = document.getElementById('startOAuthBtn');
+    const oauthUrlBox = document.getElementById('oauthUrlBox');
+    const openOAuthUrl = document.getElementById('openOAuthUrl');
+    const oauthCodeInput = document.getElementById('oauthCodeInput');
+    const oauthBackBtn = document.getElementById('oauthBackBtn');
+    const completeOAuthBtn = document.getElementById('completeOAuthBtn');
+
+    // OAuth elements (OpenAI Codex)
+    const codexOauthStep1 = document.getElementById('codexOauthStep1');
+    const codexOauthStep2 = document.getElementById('codexOauthStep2');
+    const codexStartOAuthBtn = document.getElementById('codexStartOAuthBtn');
+    const codexOauthUrlBox = document.getElementById('codexOauthUrlBox');
+    const codexOpenOAuthUrl = document.getElementById('codexOpenOAuthUrl');
+    const codexOauthCodeInput = document.getElementById('codexOauthCodeInput');
+    const codexOauthBackBtn = document.getElementById('codexOauthBackBtn');
+    const codexCompleteOAuthBtn = document.getElementById('codexCompleteOAuthBtn');
+
+    // Settings elements
+    const settingsClose = document.getElementById('settingsClose');
+    const settingsNavButtons = document.querySelectorAll('.settings-nav-btn');
+    const settingsPanelAnthropic = document.getElementById('settingsPanelAnthropic');
+    const settingsPanelOpenAICodex = document.getElementById('settingsPanelOpenAICodex');
+    const settingsPanelOllama = document.getElementById('settingsPanelOllama');
+    const settingsPanelWeb = document.getElementById('settingsPanelWeb');
+    const settingsPanelMemory = document.getElementById('settingsPanelMemory');
+
+    // Anthropic Stats
+    const anthropicModel = document.getElementById('anthropicModel');
+    const anthropicMaxTokens = document.getElementById('anthropicMaxTokens');
+    const anthropicInputTokens = document.getElementById('anthropicInputTokens');
+    const anthropicOutputTokens = document.getElementById('anthropicOutputTokens');
+    const anthropicCacheCreate = document.getElementById('anthropicCacheCreate');
+    const anthropicCacheRead = document.getElementById('anthropicCacheRead');
+    const anthropicTotalInput = document.getElementById('anthropicTotalInput');
+    const anthropicRequests = document.getElementById('anthropicRequests');
+    const anthropicRequestsReset = document.getElementById('anthropicRequestsReset');
+    const anthropicTokens = document.getElementById('anthropicTokens');
+    const anthropicTokensReset = document.getElementById('anthropicTokensReset');
+
+    // Codex Stats
+    const codexModel = document.getElementById('codexModel');
+    const codexMaxTokens = document.getElementById('codexMaxTokens');
+    const codexInputTokens = document.getElementById('codexInputTokens');
+    const codexOutputTokens = document.getElementById('codexOutputTokens');
+
+    // Ollama Stats
+    const ollamaModelSelect = document.getElementById('ollamaModelSelect');
+    const ollamaStatusLine = document.getElementById('ollamaStatusLine');
+    const ollamaModelValue = document.getElementById('ollamaModel');
+    const ollamaInputTokens = document.getElementById('ollamaInputTokens');
+    const ollamaOutputTokens = document.getElementById('ollamaOutputTokens');
+    
+    // Web Stats
+    const braveApiKeyInput = document.getElementById('braveApiKeyInput');
+    const braveApiKeySave = document.getElementById('braveApiKeySave');
+    const braveApiKeyStatus = document.getElementById('braveApiKeyStatus');
+    
+    // Memory
+    const docsList = document.getElementById('docsList');
+    const reingestAllDocs = document.getElementById('reingestAllDocs');
+
+    let noticeTimeout = null;
+    let noticeUnlockAt = 0;
+    let gatewayStateActive = false;
+    let pendingNotice = null;
+    let gatewayStateShownAt = 0;
+    let historyLoaded = false;
+    let currentProvider = null;
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Modal feedback
+    function showModalFeedback(message, type = 'error') {
+      modalFeedback.textContent = message;
+      modalFeedback.className = `modal-feedback ${type} show`;
+    }
+
+    function hideModalFeedback() {
+      modalFeedback.className = 'modal-feedback';
+    }
+
+    function applyStatus(payload) {
+      provider = payload.provider || null;
+      providerReady = !!payload.providerReady;
+      providerError = payload.providerError || null;
+      anthropicConfigured = !!payload.anthropic?.configured;
+      authType = payload.anthropic?.authType || null;
+      ollamaReachable = payload.ollama?.reachable ?? null;
+      ollamaModel = payload.ollama?.model || null;
+
+      // Track current model based on provider
+      if (provider === 'anthropic') {
+        currentModel = 'claude-sonnet-4';
+      } else if (provider === 'openai-codex') {
+        currentModel = 'gpt-5.1-codex-max';
+      } else if (provider === 'ollama') {
+        currentModel = ollamaModel;
+      } else {
+        currentModel = null;
+      }
+
+      updateStatus();
+
+      if (providerError && providerError !== lastProviderError) {
+        showToast(`[!] ${providerError}`, 'error');
+        lastProviderError = providerError;
+      } else if (!providerError) {
+        lastProviderError = null;
+      }
+
+      // Only show provider selector on first connect if no provider is configured
+      if (!providerPromptShown && isConnected && !provider) {
+        openProviderSelector();
+        providerPromptShown = true;
+      }
+    }
+
+    // Update status indicator
+    function updateStatus() {
+      statusDot.className = 'status-dot';
+
+      if (!isConnected) {
+        statusDot.classList.add('red');
+        statusText.textContent = 'DISCONNECTED';
+        wsStatus.textContent = 'disconnected';
+        providerStatus.textContent = 'not selected';
+        modelStatus.textContent = '--';
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        return;
+      }
+
+      wsStatus.textContent = 'connected';
+      modelStatus.textContent = currentModel || '--';
+
+      if (!provider) {
+        statusDot.classList.add('yellow');
+        statusText.textContent = 'SELECT PROVIDER';
+        providerStatus.textContent = 'not selected';
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        return;
+      }
+
+      if (providerError) {
+        statusDot.classList.add('red');
+        statusText.textContent = 'PROVIDER ERROR';
+        providerStatus.textContent = provider;
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        return;
+      }
+
+      if (!providerReady) {
+        statusDot.classList.add('yellow');
+        statusText.textContent = 'CONFIGURE';
+        providerStatus.textContent = provider;
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        return;
+      }
+
+      statusDot.classList.add('green');
+      statusText.textContent = 'READY';
+      providerStatus.textContent = provider;
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+    }
+
+    // Connect to WebSocket
+    function connect() {
+      if (ws && ws.readyState === WebSocket.OPEN) return;
+
+      ws = new WebSocket(GATEWAY_URL);
+
+      ws.onopen = () => {
+        console.log('[WS] Connected to gateway');
+        isConnected = true;
+        updateStatus();
+        showToast('[OK] Connected to gateway', 'success');
+
+        // Start ping interval
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            lastPingTime = Date.now();
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 5000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] Disconnected from gateway');
+        isConnected = false;
+        providerReady = false;
+        providerError = null;
+        provider = null;
+        updateStatus();
+        showToast('[!] Disconnected from gateway. Reconnecting...', 'error');
+
+        if (pingInterval) {
+          clearInterval(pingInterval);
+          pingInterval = null;
+        }
+
+        // Reconnect after 3 seconds
+        setTimeout(connect, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('[WS] Error:', err);
+      };
+    }
+
+    // Handle incoming messages
+    function handleMessage(data) {
+      switch (data.type) {
+        case 'status':
+          isConnected = data.connected;
+          applyStatus(data);
+          break;
+
+        case 'pong':
+          if (lastPingTime) {
+            const latency = Date.now() - lastPingTime;
+            latencyStatus.textContent = `${latency}ms`;
+          }
+          applyStatus(data);
+          break;
+
+        case 'apiKeySet':
+          if (data.success) {
+            updateStatus();
+            clearWelcome();
+            showToast(`[OK] ${data.authType === 'oauth' ? 'OAuth' : 'API key'} configured!`, 'success');
+            
+            // Handle active panel reset
+            if (!settingsPanelAnthropic.classList.contains('hidden')) {
+                modalSave.textContent = 'SAVE_KEY';
+                modalSave.classList.remove('loading');
+                startOAuthBtn.textContent = 'START_OAUTH';
+                startOAuthBtn.classList.remove('loading');
+                completeOAuthBtn.textContent = 'COMPLETE';
+                completeOAuthBtn.classList.remove('loading');
+                oauthStep1.classList.remove('hidden');
+                oauthStep2.classList.add('hidden');
+            } else if (!settingsPanelOpenAICodex.classList.contains('hidden')) {
+                codexStartOAuthBtn.textContent = 'START_OAUTH';
+                codexStartOAuthBtn.classList.remove('loading');
+                codexCompleteOAuthBtn.textContent = 'COMPLETE';
+                codexCompleteOAuthBtn.classList.remove('loading');
+                codexOauthStep1.classList.remove('hidden');
+                codexOauthStep2.classList.add('hidden');
+            }
+          } else {
+            showModalFeedback('[!] Failed to save credentials');
+            // Reset loading states on failure too
+            modalSave.classList.remove('loading');
+            startOAuthBtn.classList.remove('loading');
+            completeOAuthBtn.classList.remove('loading');
+            codexStartOAuthBtn.classList.remove('loading');
+            codexCompleteOAuthBtn.classList.remove('loading');
+          }
+          break;
+
+        case 'oauthUrl':
+          pendingOAuthUrl = data.url;
+          if (!settingsPanelOpenAICodex.classList.contains('hidden')) {
+             codexOauthUrlBox.textContent = data.url;
+             codexOauthStep1.classList.add('hidden');
+             codexOauthStep2.classList.remove('hidden');
+             codexStartOAuthBtn.textContent = 'START_OAUTH';
+             codexStartOAuthBtn.classList.remove('loading');
+          } else {
+             oauthUrlBox.textContent = data.url;
+             oauthStep1.classList.add('hidden');
+             oauthStep2.classList.remove('hidden');
+             startOAuthBtn.textContent = 'START_OAUTH';
+             startOAuthBtn.classList.remove('loading');
+          }
+          break;
+
+        case 'error':
+          showModalFeedback(`[!] ${data.message}`);
+          modalSave.textContent = 'SAVE_KEY';
+          modalSave.classList.remove('loading');
+          startOAuthBtn.textContent = 'START_OAUTH';
+          startOAuthBtn.classList.remove('loading');
+          completeOAuthBtn.textContent = 'COMPLETE';
+          completeOAuthBtn.classList.remove('loading');
+          codexStartOAuthBtn.textContent = 'START_OAUTH';
+          codexStartOAuthBtn.classList.remove('loading');
+          codexCompleteOAuthBtn.textContent = 'COMPLETE';
+          codexCompleteOAuthBtn.classList.remove('loading');
+
+          // Also show in chat if during chat
+          if (currentAssistantMessage !== null) {
+            addErrorMessage(data.message);
+            removeTypingIndicator();
+            currentAssistantMessage = null;
+          }
+          break;
+
+        case 'streamStart':
+          currentAssistantMessage = '';
+          addMessage('assistant', '', true);
+          break;
+
+        case 'streamChunk':
+          if (currentAssistantMessage !== null) {
+            currentAssistantMessage += data.content;
+            updateLastMessage(currentAssistantMessage);
+          }
+          break;
+
+        case 'streamEnd':
+          if (currentAssistantMessage !== null) {
+            messages.push({ role: 'assistant', content: currentAssistantMessage });
+            currentAssistantMessage = null;
+            removeTypingIndicator();
+          }
+          break;
+
+        case 'toolCall':
+          showToolCall(data.name, data.reason, 'running', data.toolCallId);
+          break;
+
+        case 'toolResult':
+          updateToolCallStatus(data.name, data.success ? 'success' : 'error', data.toolCallId);
+          break;
+
+        case 'settings':
+          renderSettings(data);
+          break;
+
+        case 'providers':
+          renderProviders(data);
+          break;
+
+        case 'providerSet':
+          showToast(`[OK] Provider set to ${data.provider}`, 'success');
+          closeProviderSelector();
+          break;
+
+        case 'ollamaModelSet':
+          showToast(`[OK] Ollama model set to ${data.model}`, 'success');
+          break;
+
+        case 'notice':
+          showNotice(data.message, data.minDurationMs || 3000);
+          break;
+
+        case 'gatewayState':
+          showGatewayState(data.state, data.message);
+          break;
+
+        case 'history':
+          renderHistory(data.messages || []);
+          break;
+
+        case 'reloadRequest':
+          showReloadModal(data.message);
+          break;
+
+        case 'braveApiKeySet':
+          braveApiKeySave.textContent = 'SAVE_KEY';
+          braveApiKeySave.classList.remove('loading');
+          if (data.success) {
+            braveApiKeyInput.value = '';
+            braveApiKeyStatus.textContent = 'Status: configured';
+            showToast('[OK] Brave API key saved', 'success');
+          } else {
+            braveApiKeyStatus.textContent = 'Status: failed to save';
+            showToast('[!] Failed to save Brave API key', 'error');
+          }
+          break;
+
+        case 'docsList':
+          renderDocsList(data.docs || []);
+          break;
+
+        case 'reingestDocResult':
+          if (data.success) {
+            showToast(`[OK] Reingested ${data.name}`, 'success');
+          } else {
+            showToast(`[!] Failed to reingest ${data.name}`, 'error');
+          }
+          requestDocsList();
+          break;
+
+        case 'reingestAllDocsResult':
+          if (data.success) {
+            showToast('[OK] Reingested all docs', 'success');
+          } else {
+            showToast('[!] Failed to reingest docs', 'error');
+          }
+          requestDocsList();
+          break;
+      }
+    }
+
+    // Clear welcome message
+    function clearWelcome() {
+      const welcome = chatContainer.querySelector('.welcome');
+      if (welcome) {
+        welcome.remove();
+      }
+    }
+
+    // Add message to chat
+    function addMessage(role, content, isStreaming = false) {
+      clearWelcome();
+
+      // Use markdown for assistant messages, escape HTML for user messages
+      const renderedContent = role === 'assistant'
+        ? renderMarkdown(content)
+        : escapeHtml(content);
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+      const agentAvatar = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" aria-hidden="true" role="img" preserveAspectRatio="xMidYMid meet"><path fill="#ffffff" d="M26 31h4v4h-4zM6 31h4v4H6zm24-21h-2V8h-2V6h-3V2h-2v4h-6V2h-2v4h-3v2H8v2H6v7H2v2h4v7h4v5h5v-5h6v5h5v-5h4v-7h4v-2h-4v-7zM16 21h-4v-8h4v8zm4 0v-8h4v8h-4zM34 6h2v11h-2zM0 6h2v11H0z"/></svg>';
+      messageDiv.innerHTML = `
+        <div class="message-avatar">${role === 'user' ? '$' : agentAvatar}</div>
+        <div class="message-content">${renderedContent}${isStreaming ? '<div class="typing-indicator"><span></span><span></span><span></span></div>' : ''}</div>
+      `;
+
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Update last message (for streaming)
+    function updateLastMessage(content) {
+      const lastMessage = chatContainer.querySelector('.message.assistant:last-child .message-content');
+      if (lastMessage) {
+        const typingIndicator = lastMessage.querySelector('.typing-indicator');
+        // Use markdown for streaming assistant messages
+        lastMessage.innerHTML = renderMarkdown(content) + (typingIndicator ? typingIndicator.outerHTML : '');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }
+
+    // Remove typing indicator
+    function removeTypingIndicator() {
+      const indicator = chatContainer.querySelector('.typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    // Add error message
+    function addErrorMessage(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'message assistant';
+      errorDiv.innerHTML = `
+        <div class="message-avatar" style="background: var(--accent-red);">!</div>
+        <div class="message-content" style="border-color: var(--accent-red); color: var(--accent-red);">[ERROR] ${escapeHtml(message)}</div>
+      `;
+      chatContainer.appendChild(errorDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Remove empty streaming message (shown before tool calls)
+    function removeEmptyStreamingMessage() {
+      const lastMessage = chatContainer.querySelector('.message.assistant:last-child');
+      if (lastMessage) {
+        const content = lastMessage.querySelector('.message-content');
+        // Remove if content is empty or only has typing indicator
+        if (content && (content.textContent.trim() === '' || content.children.length === 1 && content.querySelector('.typing-indicator'))) {
+          lastMessage.remove();
+        }
+      }
+    }
+
+    // Show tool call indicator
+    function showToolCall(toolName, reason = null, status = 'running', toolCallId = null) {
+      clearWelcome();
+      removeTypingIndicator();
+      removeEmptyStreamingMessage();
+
+      const reasonHtml = reason
+        ? `<div class="tool-call-reason">${escapeHtml(reason)}</div>`
+        : '';
+
+      const toolId = toolCallId
+        ? `tool-${toolCallId}`
+        : `tool-${toolName.replace(/[^a-z0-9]/gi, '-')}`;
+
+      const toolDiv = document.createElement('div');
+      toolDiv.className = 'message assistant tool-message';
+      toolDiv.id = toolId;
+      toolDiv.innerHTML = `
+        <div class="message-avatar">⚒</div>
+        <div class="tool-call-container">
+          <div class="tool-call ${status}">
+            <span class="tool-call-icon ${status}">⚒︎</span>
+            <span class="tool-call-label">executing</span>
+            <span class="tool-call-name">${escapeHtml(toolName)}</span>
+          </div>
+          ${reasonHtml}
+        </div>
+      `;
+
+      chatContainer.appendChild(toolDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Update tool call status
+    function updateToolCallStatus(toolName, status, toolCallId = null) {
+      const toolId = toolCallId
+        ? `tool-${toolCallId}`
+        : `tool-${toolName.replace(/[^a-z0-9]/gi, '-')}`;
+      const toolDiv = document.getElementById(toolId);
+      if (toolDiv) {
+        const toolCall = toolDiv.querySelector('.tool-call');
+        const icon = toolDiv.querySelector('.tool-call-icon');
+        const label = toolDiv.querySelector('.tool-call-label');
+        if (toolCall) {
+          toolCall.className = `tool-call ${status}`;
+        }
+        if (icon) {
+          icon.className = `tool-call-icon ${status}`;
+          icon.textContent = '⚒︎';
+        }
+        if (label) {
+          label.textContent = status === 'success' ? 'completed' : 'failed';
+        }
+      }
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Send message
+    function sendMessage() {
+      const content = messageInput.value.trim();
+      if (!content || !isConnected || !providerReady) return;
+
+      // Add user message to chat
+      addMessage('user', content);
+      messages.push({ role: 'user', content });
+
+      // Send to gateway
+      ws.send(JSON.stringify({
+        type: 'chat',
+        messages: messages
+      }));
+
+      // Clear input
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+    }
+
+    // Modal functions
+    function openSettings() {
+      settingsOverlay.classList.add('active');
+      resetAuthPanel();
+      selectSettingsPanel(provider || 'anthropic');
+      requestSettings();
+      requestDocsList();
+    }
+
+    function closeSettings() {
+      settingsOverlay.classList.remove('active');
+    }
+
+    function resetAuthPanel() {
+      apiKeyInput.value = '';
+      oauthCodeInput.value = '';
+      hideModalFeedback();
+      modalSave.textContent = 'SAVE_KEY';
+      modalSave.classList.remove('loading');
+      startOAuthBtn.textContent = 'START_OAUTH';
+      startOAuthBtn.classList.remove('loading');
+      completeOAuthBtn.textContent = 'COMPLETE';
+      completeOAuthBtn.classList.remove('loading');
+      oauthStep1.classList.remove('hidden');
+      oauthStep2.classList.add('hidden');
+      pendingOAuthUrl = null;
+      
+      // Codex Reset
+      codexOauthCodeInput.value = '';
+      codexStartOAuthBtn.textContent = 'START_OAUTH';
+      codexStartOAuthBtn.classList.remove('loading');
+      codexCompleteOAuthBtn.textContent = 'COMPLETE';
+      codexCompleteOAuthBtn.classList.remove('loading');
+      codexOauthStep1.classList.remove('hidden');
+      codexOauthStep2.classList.add('hidden');
+    }
+
+    function switchTab(tabName) {
+      authTabs.forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+      });
+      apikeyPanel.classList.toggle('active', tabName === 'apikey');
+      oauthPanel.classList.toggle('active', tabName === 'oauth');
+      hideModalFeedback();
+    }
+
+    function selectSettingsPanel(panel) {
+      settingsNavButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.panel === panel);
+      });
+      settingsPanelAnthropic.classList.toggle('hidden', panel !== 'anthropic');
+      settingsPanelOpenAICodex.classList.toggle('hidden', panel !== 'openai-codex');
+      settingsPanelOllama.classList.toggle('hidden', panel !== 'ollama');
+      settingsPanelWeb.classList.toggle('hidden', panel !== 'web');
+      settingsPanelMemory.classList.toggle('hidden', panel !== 'memory');
+    }
+
+    function openProviderSelector() {
+      providerOverlay.classList.add('active');
+      requestProviders();
+    }
+
+    function closeProviderSelector() {
+      providerOverlay.classList.remove('active');
+    }
+
+    function showNotice(message, minDurationMs) {
+      if (gatewayStateActive) {
+        pendingNotice = { message, minDurationMs };
+        return;
+      }
+      noticeMessage.textContent = message || 'Please wait...';
+      noticeOverlay.classList.add('active');
+      noticeClose.classList.add('disabled');
+      noticeClose.textContent = 'PLEASE_WAIT';
+      noticeUnlockAt = Date.now() + (minDurationMs || 3000);
+
+      if (noticeTimeout) {
+        clearTimeout(noticeTimeout);
+      }
+
+      noticeTimeout = setTimeout(() => {
+        noticeClose.classList.remove('disabled');
+        noticeClose.textContent = 'CLOSE';
+      }, minDurationMs || 3000);
+    }
+
+    function closeNotice() {
+      if (gatewayStateActive) return;
+      if (Date.now() < noticeUnlockAt) return;
+      noticeOverlay.classList.remove('active');
+      noticeMessage.textContent = '';
+    }
+
+    function showGatewayState(state, message) {
+      if (!state) return;
+      if (state === 'ready') {
+        const elapsed = Date.now() - gatewayStateShownAt;
+        const minDuration = 2000;
+        const remaining = Math.max(0, minDuration - elapsed);
+
+        const dismiss = () => {
+          gatewayStateActive = false;
+          noticeOverlay.classList.remove('active');
+          noticeMessage.textContent = '';
+          if (pendingNotice) {
+            const { message: pendingMessage, minDurationMs } = pendingNotice;
+            pendingNotice = null;
+            showNotice(pendingMessage, minDurationMs);
+          }
+        };
+
+        if (remaining > 0) {
+          setTimeout(dismiss, remaining);
+        } else {
+          dismiss();
+        }
+        return;
+      }
+
+      gatewayStateActive = true;
+      noticeMessage.textContent = message || `Gateway ${state}...`;
+      noticeOverlay.classList.add('active');
+      noticeClose.classList.add('disabled');
+      noticeClose.textContent = 'PLEASE_WAIT';
+      noticeUnlockAt = Number.POSITIVE_INFINITY;
+      gatewayStateShownAt = Date.now();
+      if (noticeTimeout) {
+        clearTimeout(noticeTimeout);
+        noticeTimeout = null;
+      }
+    }
+
+    function showReloadModal(message) {
+      reloadMessage.textContent = message || 'A refresh is required to continue.';
+      reloadOverlay.classList.add('active');
+    }
+
+    function renderHistory(history) {
+      if (historyLoaded || !history.length) return;
+      historyLoaded = true;
+      clearWelcome();
+      history.forEach((msg) => {
+        if (!msg || !msg.role || typeof msg.content !== 'string') return;
+
+        // Handle tool call history entries
+        if (msg.role === 'tool') {
+          try {
+            const toolData = JSON.parse(msg.content);
+            renderToolCallFromHistory(toolData.name, toolData.reason, toolData.success);
+          } catch (e) {
+            // Ignore malformed tool entries
+          }
+          return;
+        }
+
+        addMessage(msg.role, msg.content);
+        messages.push({ role: msg.role, content: msg.content });
+      });
+    }
+
+    // Render tool call from history (already completed)
+    function renderToolCallFromHistory(toolName, reason, success) {
+      const status = success ? 'success' : 'error';
+      const reasonHtml = reason
+        ? `<div class="tool-call-reason">${escapeHtml(reason)}</div>`
+        : '';
+
+      const toolDiv = document.createElement('div');
+      toolDiv.className = 'message assistant tool-message';
+      toolDiv.innerHTML = `
+        <div class="message-avatar">⚒</div>
+        <div class="tool-call-container">
+          <div class="tool-call ${status}">
+            <span class="tool-call-icon ${status}">⚒︎</span>
+            <span class="tool-call-label">${success ? 'completed' : 'failed'}</span>
+            <span class="tool-call-name">${escapeHtml(toolName)}</span>
+          </div>
+          ${reasonHtml}
+        </div>
+      `;
+      chatContainer.appendChild(toolDiv);
+    }
+
+    function saveApiKey() {
+      const apiKey = apiKeyInput.value.trim();
+      hideModalFeedback();
+
+      if (!apiKey) {
+        showModalFeedback('[!] API key cannot be empty');
+        return;
+      }
+
+      if (!apiKey.startsWith('sk-ant-api')) {
+        showModalFeedback('[!] Invalid format. Key should start with sk-ant-api...');
+        return;
+      }
+
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        showModalFeedback('[!] Not connected to gateway');
+        return;
+      }
+
+      modalSave.textContent = 'SAVING...';
+      modalSave.classList.add('loading');
+
+      ws.send(JSON.stringify({
+        type: 'setApiKey',
+        apiKey: apiKey
+      }));
+
+      setTimeout(() => {
+        if (modalSave.classList.contains('loading')) {
+          modalSave.textContent = 'SAVE_KEY';
+          modalSave.classList.remove('loading');
+          showModalFeedback('[!] No response from gateway');
+        }
+      }, 5000);
+    }
+
+    function requestSettings() {
+      setSettingsLoading();
+
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        anthropicModel.textContent = 'Gateway disconnected';
+        ollamaStatusLine.textContent = 'Status: gateway disconnected';
+        return;
+      }
+
+      ws.send(JSON.stringify({ type: 'getSettings' }));
+    }
+
+    function setSettingsLoading() {
+      const loading = 'Loading...';
+      anthropicModel.textContent = loading;
+      anthropicMaxTokens.textContent = loading;
+      anthropicInputTokens.textContent = loading;
+      anthropicOutputTokens.textContent = loading;
+      anthropicCacheCreate.textContent = loading;
+      anthropicCacheRead.textContent = loading;
+      anthropicTotalInput.textContent = loading;
+      anthropicRequests.textContent = loading;
+      anthropicRequestsReset.textContent = loading;
+      anthropicTokens.textContent = loading;
+      anthropicTokensReset.textContent = loading;
+      
+      codexModel.textContent = loading;
+      codexMaxTokens.textContent = loading;
+      codexInputTokens.textContent = loading;
+      codexOutputTokens.textContent = loading;
+
+      ollamaStatusLine.textContent = 'Status: loading...';
+      ollamaModelSelect.innerHTML = '';
+      ollamaModelValue.textContent = loading;
+      ollamaInputTokens.textContent = loading;
+      ollamaOutputTokens.textContent = loading;
+      braveApiKeyStatus.textContent = 'Status: loading...';
+      docsList.innerHTML = '<div class="settings-muted">Loading...</div>';
+    }
+
+    function formatValue(value, fallback = '--') {
+      if (value === null || value === undefined || value === '') return fallback;
+      return value;
+    }
+
+    function renderSettings(data) {
+      const anthropicData = data.providers?.anthropic || {};
+      const codexData = data.providers?.['openai-codex'] || {};
+      const ollamaData = data.providers?.ollama || {};
+      const systemData = data.system?.web?.search || {};
+      
+      // Anthropic Stats
+      const usage = anthropicData.usage || null;
+      const limits = anthropicData.limits || {};
+      const rate = limits.rate || {};
+
+      anthropicModel.textContent = formatValue(anthropicData.model, 'Unknown');
+      anthropicMaxTokens.textContent = formatValue(limits.maxTokens);
+
+      if (!usage) {
+        anthropicInputTokens.textContent = 'No usage yet';
+        anthropicOutputTokens.textContent = '--';
+        anthropicCacheCreate.textContent = '--';
+        anthropicCacheRead.textContent = '--';
+        anthropicTotalInput.textContent = '--';
+      } else {
+        const inputTokens = Number(usage.input_tokens || 0);
+        const cacheCreate = Number(usage.cache_creation_input_tokens || 0);
+        const cacheRead = Number(usage.cache_read_input_tokens || 0);
+        const totalInput = inputTokens + cacheCreate + cacheRead;
+
+        anthropicInputTokens.textContent = formatValue(usage.input_tokens);
+        anthropicOutputTokens.textContent = formatValue(usage.output_tokens);
+        anthropicCacheCreate.textContent = formatValue(usage.cache_creation_input_tokens);
+        anthropicCacheRead.textContent = formatValue(usage.cache_read_input_tokens);
+        anthropicTotalInput.textContent = totalInput;
+      }
+
+      if (!rate || Object.keys(rate).length === 0) {
+        anthropicRequests.textContent = 'Not available';
+        anthropicRequestsReset.textContent = '--';
+        anthropicTokens.textContent = 'Not available';
+        anthropicTokensReset.textContent = '--';
+      } else {
+        const reqLimit = formatValue(rate.requestsLimit);
+        const reqRemaining = formatValue(rate.requestsRemaining);
+        const tokLimit = formatValue(rate.tokensLimit);
+        const tokRemaining = formatValue(rate.tokensRemaining);
+
+        anthropicRequests.textContent = `${reqRemaining} / ${reqLimit}`;
+        anthropicRequestsReset.textContent = formatValue(rate.requestsReset);
+        anthropicTokens.textContent = `${tokRemaining} / ${tokLimit}`;
+        anthropicTokensReset.textContent = formatValue(rate.tokensReset);
+      }
+
+      // Codex Stats
+      const codexUsage = codexData.usage || null;
+      const codexLimitsData = codexData.limits || {};
+      codexModel.textContent = formatValue(codexData.model, 'Unknown');
+      codexMaxTokens.textContent = formatValue(codexLimitsData.maxTokens);
+      
+      if (!codexUsage) {
+        codexInputTokens.textContent = 'No usage yet';
+        codexOutputTokens.textContent = '--';
+      } else {
+        codexInputTokens.textContent = formatValue(codexUsage.input_tokens);
+        codexOutputTokens.textContent = formatValue(codexUsage.output_tokens);
+      }
+
+      // Ollama Stats
+      const ollamaUsage = ollamaData.usage || null;
+      ollamaModelValue.textContent = formatValue(ollamaData.model, 'Unknown');
+      if (!ollamaUsage) {
+        ollamaInputTokens.textContent = 'No usage yet';
+        ollamaOutputTokens.textContent = '--';
+      } else {
+        ollamaInputTokens.textContent = formatValue(ollamaUsage.input_tokens);
+        ollamaOutputTokens.textContent = formatValue(ollamaUsage.output_tokens);
+      }
+
+      const reachable = ollamaData.reachable;
+      if (reachable === false) {
+        ollamaStatusLine.textContent = `Status: unavailable (${formatValue(ollamaData.error, 'unknown error')})`;
+      } else if (reachable === true) {
+        ollamaStatusLine.textContent = 'Status: reachable';
+      } else {
+        ollamaStatusLine.textContent = 'Status: unknown';
+      }
+
+      populateOllamaModels(ollamaData.models || [], ollamaData.model);
+
+      const braveConfigured = systemData.brave_api_key_configured;
+      braveApiKeyStatus.textContent = braveConfigured ? 'Status: configured' : 'Status: not configured';
+    }
+
+    function requestDocsList() {
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        docsList.innerHTML = '<div class="settings-muted">Gateway disconnected.</div>';
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'getDocs' }));
+    }
+
+    function renderDocsList(docs) {
+      docsList.innerHTML = '';
+      if (!docs.length) {
+        docsList.innerHTML = '<div class="settings-muted">No docs found.</div>';
+        return;
+      }
+      docs.forEach((doc) => {
+        const row = document.createElement('div');
+        row.className = 'doc-item';
+        row.innerHTML = `
+          <span class="doc-name">${escapeHtml(doc.name)}</span>
+          <button class="modal-btn save">REINGEST</button>
+        `;
+        const button = row.querySelector('button');
+        button.addEventListener('click', () => {
+          ws.send(JSON.stringify({ type: 'reingestDoc', name: doc.name }));
+        });
+        docsList.appendChild(row);
+      });
+    }
+
+    function requestProviders() {
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        providerGrid.innerHTML = '<div class="settings-muted">Gateway disconnected.</div>';
+        return;
+      }
+
+      ws.send(JSON.stringify({ type: 'getProviders' }));
+    }
+
+    function renderProviders(data) {
+      const providers = data.providers || [];
+      currentProvider = data.currentProvider || null;
+      providerGrid.innerHTML = '';
+
+      providers.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'provider-card';
+
+        let meta = '';
+        let disabled = false;
+
+        if (item.id === 'anthropic') {
+          meta = item.configured ? `Configured (${item.authType || 'key'})` : 'Not configured';
+        } else if (item.id === 'openai-codex') {
+          meta = item.configured ? 'Configured (OAuth)' : 'Not configured';
+        } else if (item.id === 'ollama') {
+          if (item.reachable === false) {
+            meta = `Unavailable (${item.error || 'not reachable'})`;
+            disabled = true;
+          } else if (item.reachable === true) {
+            meta = item.model ? `Ready (${item.model})` : 'Reachable (no model)';
+          } else {
+            meta = 'Checking...';
+          }
+        }
+
+        if (disabled) {
+          card.classList.add('disabled');
+        }
+        if (item.id === currentProvider) {
+          card.classList.add('active');
+        }
+
+        card.innerHTML = `
+          <div class="provider-title">${item.label}</div>
+          <div class="provider-meta">${meta}</div>
+        `;
+
+        if (!disabled) {
+          card.addEventListener('click', () => {
+            ws.send(JSON.stringify({ type: 'setProvider', provider: item.id }));
+          });
+        }
+
+        providerGrid.appendChild(card);
+      });
+
+      if (currentProvider) {
+        providerContinue.classList.remove('disabled');
+      } else {
+        providerContinue.classList.add('disabled');
+      }
+    }
+
+    function populateOllamaModels(models, selectedModel) {
+      ollamaModelSelect.innerHTML = '';
+
+      if (!models.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No models available';
+        ollamaModelSelect.appendChild(option);
+        ollamaModelSelect.disabled = true;
+        return;
+      }
+
+      if (!selectedModel) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select a model...';
+        placeholder.selected = true;
+        ollamaModelSelect.appendChild(placeholder);
+      }
+
+      models.forEach((model) => {
+        const option = document.createElement('option');
+        const name = model?.name || model?.model || String(model);
+        option.value = name;
+        option.textContent = name;
+        if (name === selectedModel) {
+          option.selected = true;
+        }
+        ollamaModelSelect.appendChild(option);
+      });
+
+      ollamaModelSelect.disabled = false;
+    }
+
+    function startOAuth() {
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        showModalFeedback('[!] Not connected to gateway');
+        return;
+      }
+
+      startOAuthBtn.textContent = 'STARTING...';
+      startOAuthBtn.classList.add('loading');
+      hideModalFeedback();
+
+      ws.send(JSON.stringify({ type: 'startOAuthFlow', provider: 'anthropic' }));
+    }
+
+    function completeOAuth() {
+      const codeState = oauthCodeInput.value.trim();
+      hideModalFeedback();
+
+      if (!codeState) {
+        showModalFeedback('[!] Please paste the code#state');
+        return;
+      }
+
+      const parts = codeState.split('#');
+      if (parts.length !== 2) {
+        showModalFeedback('[!] Invalid format. Expected: code#state');
+        return;
+      }
+
+      completeOAuthBtn.textContent = 'COMPLETING...';
+      completeOAuthBtn.classList.add('loading');
+
+      ws.send(JSON.stringify({
+        type: 'completeOAuthFlow',
+        code: parts[0],
+        state: parts[1]
+      }));
+    }
+
+    function startCodexOAuth() {
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        showModalFeedback('[!] Not connected to gateway');
+        return;
+      }
+
+      codexStartOAuthBtn.textContent = 'STARTING...';
+      codexStartOAuthBtn.classList.add('loading');
+      hideModalFeedback();
+
+      ws.send(JSON.stringify({ type: 'startOAuthFlow', provider: 'openai-codex' }));
+    }
+
+    function completeCodexOAuth() {
+      const input = codexOauthCodeInput.value.trim();
+      hideModalFeedback();
+
+      if (!input) {
+        showModalFeedback('[!] Please paste the code or URL');
+        return;
+      }
+
+      let code = input;
+      let state = null;
+
+      // Try parsing as URL
+      try {
+        const url = new URL(input);
+        const urlCode = url.searchParams.get('code');
+        const urlState = url.searchParams.get('state');
+        if (urlCode) {
+          code = urlCode;
+          state = urlState || null;
+        }
+      } catch (e) {
+        // Not a valid URL, try other formats
+        if (input.includes('#')) {
+           const p = input.split('#');
+           code = p[0];
+           state = p[1];
+        }
+      }
+
+      if (!code) {
+         showModalFeedback('[!] Could not extract authorization code');
+         return;
+      }
+
+      codexCompleteOAuthBtn.textContent = 'COMPLETING...';
+      codexCompleteOAuthBtn.classList.add('loading');
+
+      ws.send(JSON.stringify({
+        type: 'completeOAuthFlow',
+        code: code,
+        state: state
+      }));
+    }
+
+    function saveBraveApiKey() {
+      const apiKey = braveApiKeyInput.value.trim();
+      if (!apiKey) {
+        braveApiKeyStatus.textContent = 'Status: missing key';
+        return;
+      }
+
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) {
+        braveApiKeyStatus.textContent = 'Status: gateway disconnected';
+        return;
+      }
+
+      braveApiKeySave.textContent = 'SAVING...';
+      braveApiKeySave.classList.add('loading');
+
+      ws.send(JSON.stringify({
+        type: 'setBraveApiKey',
+        apiKey
+      }));
+    }
+
+    // Event listeners
+    settingsBtn.addEventListener('click', openSettings);
+    providerStat.addEventListener('click', openProviderSelector);
+    modalSave.addEventListener('click', saveApiKey);
+
+    authTabs.forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    settingsNavButtons.forEach(button => {
+      button.addEventListener('click', () => selectSettingsPanel(button.dataset.panel));
+    });
+
+    startOAuthBtn.addEventListener('click', startOAuth);
+    oauthBackBtn.addEventListener('click', () => {
+      oauthStep1.classList.remove('hidden');
+      oauthStep2.classList.add('hidden');
+      pendingOAuthUrl = null;
+    });
+
+    openOAuthUrl.addEventListener('click', () => {
+      if (pendingOAuthUrl) {
+        window.open(pendingOAuthUrl, '_blank');
+      }
+    });
+
+    completeOAuthBtn.addEventListener('click', completeOAuth);
+
+    // Codex Listeners
+    codexStartOAuthBtn.addEventListener('click', startCodexOAuth);
+    codexOauthBackBtn.addEventListener('click', () => {
+      codexOauthStep1.classList.remove('hidden');
+      codexOauthStep2.classList.add('hidden');
+      pendingOAuthUrl = null;
+    });
+    codexOpenOAuthUrl.addEventListener('click', () => {
+      if (pendingOAuthUrl) {
+        window.open(pendingOAuthUrl, '_blank');
+      }
+    });
+    codexCompleteOAuthBtn.addEventListener('click', completeCodexOAuth);
+
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+
+    noticeOverlay.addEventListener('click', (e) => {
+      if (e.target === noticeOverlay) closeNotice();
+    });
+
+    reloadOverlay.addEventListener('click', (e) => {
+      if (e.target === reloadOverlay) window.location.reload();
+    });
+
+    apiKeyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveApiKey();
+      if (e.key === 'Escape') closeSettings();
+    });
+
+    oauthCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') completeOAuth();
+      if (e.key === 'Escape') closeSettings();
+    });
+    
+    codexOauthCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') completeCodexOAuth();
+      if (e.key === 'Escape') closeSettings();
+    });
+
+    settingsClose.addEventListener('click', closeSettings);
+    noticeClose.addEventListener('click', closeNotice);
+    providerContinue.addEventListener('click', () => {
+      if (!currentProvider) return;
+      closeProviderSelector();
+    });
+    reloadConfirm.addEventListener('click', () => {
+      window.location.reload();
+    });
+    braveApiKeySave.addEventListener('click', saveBraveApiKey);
+    reingestAllDocs.addEventListener('click', () => {
+      ws.send(JSON.stringify({ type: 'reingestAllDocs' }));
+    });
+
+    ollamaModelSelect.addEventListener('change', () => {
+      const model = ollamaModelSelect.value;
+      if (model) {
+        ws.send(JSON.stringify({ type: 'setOllamaModel', model }));
+      }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Auto-resize textarea
+    messageInput.addEventListener('input', () => {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+    });
+
+    // Initialize
+    connect();
+  </script>
+</body>
+</html>

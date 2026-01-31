@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "External Skills Registry",
+  "description": "Schema for gateway/external-skills/index.json",
+  "type": "object",
+  "required": ["version", "skills"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Registry version (semver)",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skills": {
+      "type": "array",
+      "description": "List of available external skills",
+      "items": {
+        "$ref": "#/definitions/skill"
+      },
+      "minItems": 0
+    }
+  },
+  "definitions": {
+    "skill": {
+      "type": "object",
+      "required": ["id", "name", "description", "keywords", "docPath"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique skill identifier (lowercase, alphanumeric + hyphens)",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable skill name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "One-line description of what the skill does",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Keywords for matching user intent (10-30 terms)",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "minItems": 5,
+          "maxItems": 30
+        },
+        "docPath": {
+          "type": "string",
+          "description": "Relative path to SKILL.md from gateway/external-skills/",
+          "pattern": "^skills/[a-z][a-z0-9-]*/SKILL\\.md$"
+        },
+        "entrypoints": {
+          "type": "array",
+          "description": "Executable entrypoints for this skill",
+          "items": {
+            "$ref": "#/definitions/entrypoint"
+          },
+          "minItems": 0
+        },
+        "install": {
+          "type": "object",
+          "description": "Installation instructions",
+          "required": ["type", "command"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["brew", "npm", "pip", "apt", "manual", "none"]
+            },
+            "command": {
+              "type": "string",
+              "description": "Installation command or instructions"
+            },
+            "prerequisites": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Prerequisites that must be installed first"
+            }
+          }
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example commands or use cases",
+          "items": {
+            "type": "object",
+            "required": ["description", "command"],
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "What this example does"
+              },
+              "command": {
+                "type": "string",
+                "description": "Example command to run"
+              }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "entrypoint": {
+      "type": "object",
+      "required": ["type", "name"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["script", "binary", "api", "manual"],
+          "description": "Type of entrypoint"
+        },
+        "name": {
+          "type": "string",
+          "description": "Entrypoint name/identifier"
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path to executable (for script/binary)"
+        },
+        "command": {
+          "type": "string",
+          "description": "Example command format with placeholders"
+        },
+        "description": {
+          "type": "string",
+          "description": "What this entrypoint does"
+        }
+      }
+    }
+  }
+}

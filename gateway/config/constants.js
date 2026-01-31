@@ -1,0 +1,21 @@
+import path from 'path';
+
+export const SETTINGS_DIR = path.join(process.env.HOME || process.cwd(), '.maximus');
+export const SETTINGS_PATH = path.join(SETTINGS_DIR, 'settings.json');
+export const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+export const DEFAULT_MAX_TOKENS = 4096;
+export const DEFAULT_OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
+export const DEFAULT_OPENAI_CODEX_MODEL = 'gpt-5.1-codex-mini';
+export const DEFAULT_KIMI_ENDPOINT = 'https://api.moonshot.ai/v1';
+export const DEFAULT_KIMI_MODEL = 'kimi-k2.5';
+export const DEFAULT_KIMI_MAX_OUTPUT_TOKENS = 32768;
+export const DEFAULT_KIMI_CONTEXT_WINDOW = 262144;
+export const DEFAULT_KIMI_REASONING_EFFORT = 'medium';
+export const DEFAULT_NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
+export const DEFAULT_NVIDIA_MODEL = 'moonshotai/kimi-k2.5';
+export const DEFAULT_NVIDIA_MAX_TOKENS = 16384;
+export const DEFAULT_NVIDIA_TEMPERATURE = 1.0;
+export const DEFAULT_NVIDIA_TOP_P = 1.0;
+export const DEFAULT_NVIDIA_STREAM = true;
+export const DEFAULT_NVIDIA_CHAT_TEMPLATE_KWARGS = { thinking: true };
+export const DEFAULT_NVIDIA_TIMEOUT_MS = 120000;

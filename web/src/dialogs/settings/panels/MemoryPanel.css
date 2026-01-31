@@ -1,0 +1,29 @@
+@import './AnthropicPanel.css';
+
+/* Doc item in memory panel */
+.doc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-divider);
+  font-size: var(--text-sm);
+}
+
+.doc-item:last-child {
+  border-bottom: none;
+}
+
+.doc-name {
+  color: var(--text-secondary);
+  word-break: break-all;
+  flex: 1;
+}
+
+/* Small button variant */
+.modal-btn-small {
+  height: 28px;
+  padding: 0 var(--spacing-md);
+  font-size: var(--text-xs);
+}

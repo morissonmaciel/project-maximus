@@ -1,0 +1,20 @@
+{
+  "name": "maximus",
+  "version": "0.5.0",
+  "description": "Multi-provider LLM gateway with terminal-style UI",
+  "author": "morissonmaciel",
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "start": "concurrently \"npm run gateway\" \"npm run web\"",
+    "start-container": "concurrently \"GATEWAY_PORT=3001 npm run gateway\" \"WEB_PORT=3000 GATEWAY_PORT=3001 GATEWAY_PUBLIC_PORT=30001 npm run web\"",
+    "gateway": "cd gateway && npm run dev",
+    "web": "cd web && npm run dev",
+    "install:all": "npm install && cd gateway && npm install && cd ../web && npm install",
+    "install:gateway": "cd gateway && npm install",
+    "install:web": "cd web && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

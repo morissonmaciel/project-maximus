@@ -1,0 +1,155 @@
+/* Settings Panel Base */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Settings Section */
+.settings-section {
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.settings-section h4 {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  text-transform: none;
+}
+
+.settings-section p {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.5;
+}
+
+/* Auth Tabs */
+.auth-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.auth-tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.auth-tab:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.auth-tab.active {
+  background: var(--action-primary);
+  border-color: var(--action-primary);
+  color: var(--action-primary-text);
+}
+
+/* Settings Row */
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-divider);
+  font-size: var(--text-base);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  color: var(--text-secondary);
+}
+
+.settings-value {
+  color: var(--text-primary);
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+  font-weight: var(--weight-medium);
+}
+
+/* OAuth Steps */
+.oauth-steps {
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+  padding-left: var(--spacing-lg);
+  line-height: 1.6;
+}
+
+.oauth-steps li {
+  margin-bottom: var(--spacing-sm);
+}
+
+.oauth-steps code {
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--text-primary);
+}
+
+/* OAuth URL Box */
+.oauth-url-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  word-break: break-all;
+  font-size: var(--text-base);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+/* Auth Actions */
+.auth-actions {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-divider);
+}
+
+/* Input in settings */
+.settings-section input {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--spacing-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  outline: none;
+  margin-bottom: var(--spacing-md);
+  transition: all var(--transition-fast);
+}
+
+.settings-section input:focus {
+  border-color: var(--action-primary);
+}
+
+.settings-section input::placeholder {
+  color: var(--text-muted);
+}

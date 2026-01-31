@@ -1,0 +1,12 @@
+node_modules/
+gateway/node_modules/
+gateway/package-lock.json
+web/node_modules/
+web/package-lock.json
+.DS_Store
+.maximus/
+.claude/
+*.log
+.env
+
+web/dist/

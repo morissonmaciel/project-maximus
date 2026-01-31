@@ -1,0 +1,155 @@
+{
+  "version": "1.0.0",
+  "skills": [
+    {
+      "id": "gog",
+      "name": "gog - Google Workspace CLI",
+      "description": "Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs.",
+      "keywords": [
+        "gog",
+        "gogcli",
+        "google",
+        "google workspace",
+        "gsuite",
+        "gmail",
+        "google mail",
+        "email",
+        "send email",
+        "search email",
+        "check email",
+        "compose email",
+        "reply to email",
+        "draft email",
+        "calendar",
+        "google calendar",
+        "schedule meeting",
+        "create event",
+        "list events",
+        "calendar event",
+        "drive",
+        "google drive",
+        "find file",
+        "contacts",
+        "google contacts",
+        "sheets",
+        "google sheets",
+        "spreadsheet",
+        "update sheet",
+        "docs",
+        "google docs"
+      ],
+      "docPath": "skills/gog/SKILL.md",
+      "entrypoints": [
+        {
+          "type": "binary",
+          "name": "gog",
+          "command": "gog <command> [args]",
+          "description": "Main gog CLI entrypoint"
+        }
+      ],
+      "install": {
+        "type": "brew",
+        "command": "brew install steipete/tap/gogcli",
+        "prerequisites": [
+          "Homebrew installed"
+        ]
+      },
+      "examples": [
+        {
+          "description": "Search recent Gmail messages",
+          "command": "gog gmail search 'newer_than:7d' --max 10"
+        },
+        {
+          "description": "Send plain text email",
+          "command": "gog gmail send --to recipient@example.com --subject \"Hi\" --body \"Hello\""
+        },
+        {
+          "description": "Create calendar event",
+          "command": "gog calendar create primary --summary \"Meeting\" --from \"2025-01-30T10:00:00\" --to \"2025-01-30T11:00:00\""
+        },
+        {
+          "description": "Read Google Sheet range",
+          "command": "gog sheets get <sheetId> \"Sheet1!A1:D10\" --json"
+        }
+      ]
+    },
+    {
+      "id": "whisper",
+      "name": "whisper - Audio Transcription",
+      "description": "Transcribe audio files to text using OpenAI Whisper API.",
+      "keywords": [
+        "whisper",
+        "openai whisper",
+        "transcription",
+        "audio to text",
+        "speech to text",
+        "transcribe",
+        "audio transcription",
+        "meeting transcription",
+        "voice note",
+        "audio file",
+        "convert audio to text",
+        "dictation",
+        "speech recognition"
+      ],
+      "docPath": "skills/whisper/SKILL.md",
+      "entrypoints": [
+        {
+          "type": "script",
+          "name": "whisper_script.js",
+          "path": "skills/whisper/whisper_script.js",
+          "command": "node whisper_script.js /path/to/audio.ogg",
+          "description": "Node.js script to transcribe audio files"
+        }
+      ],
+      "install": {
+        "type": "npm",
+        "command": "npm install -g openai",
+        "prerequisites": [
+          "Node.js >= 18",
+          "OPENAI_API_KEY environment variable"
+        ]
+      },
+      "examples": [
+        {
+          "description": "Transcribe an audio file",
+          "command": "node whisper_script.js /path/to/meeting.ogg"
+        },
+        {
+          "description": "Transcribe with specific language",
+          "command": "node whisper_script.js /path/to/audio.mp3 --language pt"
+        }
+      ]
+    },
+    {
+      "id": "maximus_pokedex",
+      "name": "Maximus Pokedex",
+      "description": "Habilidade para consultar informações de Pokémons via PokéAPI e fornecer dados sobre nomes e tipos quando solicitados.",
+      "keywords": [
+        "pokemon",
+        "pokeapi",
+        "pokedex",
+        "maximus"
+      ],
+      "docPath": "skills/maximus_pokedex/SKILL.md",
+      "entrypoints": []
+    },
+    {
+      "id": "maximus-enciclopedico-paises",
+      "name": "Maximus Enciclopédico Países",
+      "description": "Consulta informações sobre países utilizando a API Rest Countries.",
+      "keywords": [
+        "país",
+        "restcountries",
+        "info",
+        "capital",
+        "população",
+        "moeda",
+        "fronteira",
+        "idioma"
+      ],
+      "docPath": "skills/maximus-enciclopedico-paises/SKILL.md",
+      "entrypoints": []
+    }
+  ]
+}

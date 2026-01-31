@@ -1,0 +1,54 @@
+.callout {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.callout-icon {
+  flex-shrink: 0;
+  font-size: var(--text-base);
+  line-height: 1.4;
+}
+
+.callout-content {
+  flex: 1;
+}
+
+.callout-title {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.callout-text {
+  line-height: 1.5;
+}
+
+/* Info variant */
+.callout-info {
+  background: rgba(17, 17, 17, 0.04);
+  border-left: 3px solid var(--text-secondary);
+}
+
+/* Success variant */
+.callout-success {
+  background: var(--status-success-bg);
+  border-left: 3px solid var(--status-success);
+}
+
+/* Warning variant */
+.callout-warning {
+  background: var(--status-warning-bg);
+  border-left: 3px solid var(--status-warning);
+}
+
+/* Error variant */
+.callout-error {
+  background: var(--status-error-bg);
+  border-left: 3px solid var(--status-error);
+}
