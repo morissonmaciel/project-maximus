@@ -1,5 +1,5 @@
-import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool } from './core-tools.js';
-import { ACCESSORY_TOOL_DEFINITIONS, ACCESSORY_OLLAMA_TOOL_DEFINITIONS, runCommandTool, webFetchTool, webSearchTool, readFileTool, grepTool, replaceFileTool, strReplaceFileTool } from './accessory-tools.js';
+import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, getWorkingDirTool, getRootMaximusDirTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool } from './core-tools.js';
+import { ACCESSORY_TOOL_DEFINITIONS, ACCESSORY_OLLAMA_TOOL_DEFINITIONS, runCommandTool, webFetchTool, webSearchTool, readFileTool, grepTool, replaceFileTool, strReplaceFileTool, createDirTool, removeDirTool, copyDirTool, moveDirTool, copyFileTool, moveFileTool, removeFileTool } from './accessory-tools.js';
 import { normalizeToolName } from './names.js';
 
 export const TOOL_DEFINITIONS = [...ACCESSORY_TOOL_DEFINITIONS, ...CORE_TOOL_DEFINITIONS];
@@ -70,6 +70,27 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
       case 'StrReplaceFile':
         return strReplaceFileTool(toolCall.input || {}, context);
 
+      case 'CreateDir':
+        return createDirTool(toolCall.input || {});
+
+      case 'RemoveDir':
+        return removeDirTool(toolCall.input || {});
+
+      case 'CopyDir':
+        return copyDirTool(toolCall.input || {});
+
+      case 'MoveDir':
+        return moveDirTool(toolCall.input || {});
+
+      case 'CopyFile':
+        return copyFileTool(toolCall.input || {});
+
+      case 'MoveFile':
+        return moveFileTool(toolCall.input || {});
+
+      case 'RemoveFile':
+        return removeFileTool(toolCall.input || {});
+
       // 🔧 CORE TOOLS
       case 'ListConfiguration':
         return listConfigurationTool(getConfigurationSnapshot);
@@ -91,6 +112,12 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
 
       case 'DisableCronJob':
         return disableCronJobTool(toolCall.input || {}, context);
+
+      case 'GetWorkingDir':
+        return getWorkingDirTool();
+
+      case 'GetRootMaximusDir':
+        return getRootMaximusDirTool();
 
       case 'GetCurrentTime':
         return getCurrentTimeTool();

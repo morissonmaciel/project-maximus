@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
 /**
  * 🔧 CORE TOOL: list_configuration
  * Category: System (Self-Awareness)
@@ -115,6 +118,24 @@ export const CORE_TOOL_DEFINITIONS = [
         jobId: { type: 'string', description: 'Cron job ID to disable' }
       },
       required: ['reason', 'jobId'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'GetWorkingDir',
+    description: 'Return the current working directory as a full expanded absolute path. Use this to construct valid file paths for other file tools.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'GetRootMaximusDir',
+    description: 'Return the full path where the Maximus gateway subsystem is running from. Use this to locate gateway files, configs, and other Maximus resources.',
+    input_schema: {
+      type: 'object',
+      properties: {},
       additionalProperties: false
     }
   },
@@ -316,6 +337,30 @@ export const CORE_OLLAMA_TOOL_DEFINITIONS = [
           jobId: { type: 'string', description: 'Cron job ID to disable' }
         },
         required: ['reason', 'jobId'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'GetWorkingDir',
+      description: 'Return the current working directory as a full expanded absolute path. Use this to construct valid file paths for other file tools.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'GetRootMaximusDir',
+      description: 'Return the full path where the Maximus gateway subsystem is running from. Use this to locate gateway files, configs, and other Maximus resources.',
+      parameters: {
+        type: 'object',
+        properties: {},
         additionalProperties: false
       }
     }
@@ -712,6 +757,27 @@ export async function disableCronJobTool(input, context) {
   const updated = cronStore.disableJob(jobId);
   if (!updated) return { error: 'Job not found', success: false };
   return { success: true, jobId };
+}
+
+export async function getWorkingDirTool() {
+  const cwd = process.cwd();
+  return {
+    success: true,
+    workingDir: cwd,
+    expandedPath: resolve(cwd)
+  };
+}
+
+export async function getRootMaximusDirTool() {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  const toolsDir = dirname(currentFilePath);
+  const gatewayDir = dirname(toolsDir);
+
+  return {
+    success: true,
+    rootMaximusDir: resolve(gatewayDir),
+    toolsDir: resolve(toolsDir)
+  };
 }
 
 export async function getCurrentTimeTool() {

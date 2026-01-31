@@ -52,6 +52,48 @@ Tools are defined in `tools/` and registered in `tools-executer.js`:
 
 Tools receive input from the LLM and return results that are sent back to the conversation.
 
+If the tool operates on files or directories, enforce full expanded absolute paths using `tools/accessory/path-validator.js`.
+
+## File and Directory Tools
+
+All file operations require **full expanded absolute paths**. Relative paths are rejected.
+
+### Path Discovery
+
+Before performing file operations, use these tools to get valid base paths:
+
+| Tool | Purpose |
+|------|---------|
+| `GetWorkingDir` | Returns the current working directory |
+| `GetRootMaximusDir` | Returns the gateway installation directory |
+
+### File Operations
+
+| Tool | Purpose |
+|------|---------|
+| `ReadFile` | Read file contents |
+| `ReplaceFile` | Create or replace entire file |
+| `StrReplaceFile` | Replace text/patterns in file |
+| `Grep` | Search file contents |
+| `CopyFile` | Copy a file |
+| `MoveFile` | Move/rename a file |
+| `RemoveFile` | Delete a file (permanent or trash) |
+
+### Directory Operations
+
+| Tool | Purpose |
+|------|---------|
+| `CreateDir` | Create a directory |
+| `CopyDir` | Copy directory recursively |
+| `MoveDir` | Move/rename a directory |
+| `RemoveDir` | Delete a directory (permanent or trash) |
+
+### Deletion Methods
+
+Both `RemoveFile` and `RemoveDir` support a `deletionKind` parameter:
+- `"system_trash"` (default) - Moves to system trash/recycle bin
+- `"permanently"` - Permanently deletes
+
 ## Key Subsystems
 
 | Directory | Purpose |

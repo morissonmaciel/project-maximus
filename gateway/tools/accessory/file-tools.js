@@ -8,55 +8,15 @@
  * - StrReplaceFile: Block/line replacement
  */
 
-import { readFile, writeFile, stat, access } from 'fs/promises';
+import { readFile, writeFile, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
-import { resolve, isAbsolute, dirname } from 'path';
+import { dirname } from 'path';
+import { validateFullPath, checkDirectoryWritable } from './path-validator.js';
 
 const exec = promisify(execCallback);
-const HOME_ROOT = process.env.HOME || process.cwd();
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB default max
-
-/**
- * Expand ~ to HOME directory
- * @param {string} inputPath
- * @returns {string} path with ~ expanded
- */
-function expandHome(inputPath) {
-  if (!inputPath || typeof inputPath !== 'string') {
-    return inputPath;
-  }
-  if (inputPath === '~' || inputPath.startsWith('~/')) {
-    return inputPath.replace(/^~/, HOME_ROOT);
-  }
-  return inputPath;
-}
-
-/**
- * Resolve path to absolute, ensuring it's within HOME directory
- * @param {string} inputPath
- * @returns {string} absolute path
- */
-function resolvePath(inputPath) {
-  if (!inputPath || typeof inputPath !== 'string') {
-    throw new Error('Path is required');
-  }
-  
-  // Expand ~ to HOME
-  const expanded = expandHome(inputPath);
-  
-  // Resolve to absolute path
-  // If already absolute, use as-is; otherwise resolve relative to current working directory (repo)
-  const absolute = isAbsolute(expanded) ? expanded : resolve(process.cwd(), expanded);
-  
-  // Security: ensure path is within HOME directory
-  if (!absolute.startsWith(HOME_ROOT)) {
-    throw new Error('Path must be within HOME directory');
-  }
-  
-  return absolute;
-}
 
 /**
  * Ingest file content into memory (best effort)
@@ -111,13 +71,14 @@ export async function readFileTool(input, context = {}) {
   console.log(`[Tool:ReadFile] Reason: ${reason}, Path: ${filePath}`);
 
   try {
-    const absolutePath = resolvePath(filePath);
+    const validation = await validateFullPath(filePath, { mustExist: true, pathType: 'file' });
+    if (!validation.valid) {
+      return { error: validation.error };
+    }
+    const absolutePath = validation.absolutePath;
     
     // Check file exists and get stats
     const stats = await stat(absolutePath);
-    if (!stats.isFile()) {
-      return { error: 'Path is not a file' };
-    }
 
     const truncated = stats.size > maxBytes;
     const content = await readFile(absolutePath, { encoding, length: maxBytes });
@@ -163,7 +124,10 @@ export async function grepTool(input, context = {}) {
     return { error: 'Pattern is required' };
   }
 
-  const searchPath = input?.path || '.';
+  const searchPath = input?.path;
+  if (!searchPath) {
+    return { error: 'Path is required' };
+  }
   const glob = input?.glob;
   const maxResults = Math.min(Number.isFinite(input?.maxResults) ? input.maxResults : 50, 100);
   const caseSensitive = input?.caseSensitive !== false; // default true
@@ -171,7 +135,11 @@ export async function grepTool(input, context = {}) {
   console.log(`[Tool:Grep] Reason: ${reason}, Pattern: ${pattern}, Path: ${searchPath}`);
 
   try {
-    const absolutePath = resolvePath(searchPath);
+    const validation = await validateFullPath(searchPath, { mustExist: true, pathType: 'directory' });
+    if (!validation.valid) {
+      return { error: validation.error };
+    }
+    const absolutePath = validation.absolutePath;
     
     // Build ripgrep command
     let cmd = 'rg';
@@ -308,7 +276,11 @@ export async function replaceFileTool(input, context = {}) {
   console.log(`[Tool:ReplaceFile] Reason: ${reason}, Path: ${filePath}`);
 
   try {
-    const absolutePath = resolvePath(filePath);
+    const validation = await validateFullPath(filePath, { mustExist: false, pathType: 'any' });
+    if (!validation.valid) {
+      return { error: validation.error };
+    }
+    const absolutePath = validation.absolutePath;
     
     // Create backup if file exists and backup enabled
     if (backup && existsSync(absolutePath)) {
@@ -319,10 +291,13 @@ export async function replaceFileTool(input, context = {}) {
 
     // Ensure directory exists
     const dir = dirname(absolutePath);
-    try {
-      await access(dir);
-    } catch {
-      return { error: 'Directory does not exist' };
+    const dirValidation = await validateFullPath(dir, { mustExist: true, pathType: 'directory' });
+    if (!dirValidation.valid) {
+      return { error: dirValidation.error };
+    }
+    const writableCheck = await checkDirectoryWritable(dirValidation.absolutePath);
+    if (!writableCheck.writable) {
+      return { error: writableCheck.error };
     }
 
     // Write new content
@@ -385,7 +360,11 @@ export async function strReplaceFileTool(input, context = {}) {
   console.log(`[Tool:StrReplaceFile] Reason: ${reason}, Path: ${filePath}`);
 
   try {
-    const absolutePath = resolvePath(filePath);
+    const validation = await validateFullPath(filePath, { mustExist: true, pathType: 'file' });
+    if (!validation.valid) {
+      return { error: validation.error };
+    }
+    const absolutePath = validation.absolutePath;
     
     // Read existing content
     const encoding = 'utf-8';

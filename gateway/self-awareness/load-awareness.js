@@ -47,18 +47,46 @@ export function loadAwareness() {
         'CreateCronJob (input: { reason, schedule, name?, timezone?, payload?, enabled?, max_retries?, retry_backoff_ms? } - creates a scheduled job), ' +
         'ListCronJobs (returns all cron jobs), ' +
         'DisableCronJob (input: { reason, jobId } - disables a scheduled job), ' +
+        'GetWorkingDir (returns current working directory as full path), ' +
+        'GetRootMaximusDir (returns gateway root path), ' +
         'GetCurrentTime (returns current UTC and local server time), ' +
         'ListSkills (returns available external skills from registry), ' +
         'ReadSkill (input: { reason, skillId, returnContent?, maxChars? } - reads a skill and updates memory), ' +
         'LearnSkill (input: { reason, skillId, name?, description?, keywords?, content, entrypoints? } - creates a new skill and ingests it), ' +
         'UnlearnSkill (input: { reason, skillId } - deletes a previously created skill from registry and memory), ' +
-        'ReadFile (input: { reason, path, maxBytes?, encoding? } - reads file under $HOME and ingests to memory, supports ~/ prefix), ' +
-        'Grep (input: { reason, pattern, path?, glob?, maxResults?, caseSensitive? } - searches files under $HOME and ingests results), ' +
+        'ReadFile (input: { reason, path, maxBytes?, encoding? } - reads file under $HOME and ingests to memory), ' +
+        'Grep (input: { reason, pattern, path, glob?, maxResults?, caseSensitive? } - searches files under $HOME and ingests results), ' +
         'ReplaceFile (input: { reason, path, content, encoding?, backup? } - creates or replaces entire file under $HOME and ingests, file is created if it does not exist), ' +
         'StrReplaceFile (input: { reason, path, find, replace, flags?, maxReplacements?, backup? } - replaces blocks in file under $HOME and ingests), ' +
+        'CreateDir (input: { reason, path, recursive? } - creates a directory), ' +
+        'RemoveDir (input: { reason, path, deletionKind? } - removes a directory), ' +
+        'CopyDir (input: { reason, sourcePath, destPath } - copies a directory), ' +
+        'MoveDir (input: { reason, sourcePath, destPath } - moves a directory), ' +
+        'CopyFile (input: { reason, sourcePath, destPath } - copies a file), ' +
+        'MoveFile (input: { reason, sourcePath, destPath } - moves a file), ' +
+        'RemoveFile (input: { reason, path, deletionKind? } - removes a file), ' +
         'SetOnboardingComplete (input: { reason, summary, preferences? } - marks onboarding complete and stores summary in memory). ' +
-        'All file tools operate within $HOME (supports ~/ paths and absolute paths under $HOME) and automatically ingest content/results into memory with source: "file". ' +
+        'All file and directory tools require FULL EXPANDED ABSOLUTE PATHS within $HOME (~/ is allowed and expanded). ' +
+        'Use GetWorkingDir or GetRootMaximusDir to build valid paths. ' +
+        'File tools automatically ingest content/results into memory with source: "file". ' +
         'Tool names are normalized to PascalCase for execution while preserving provider-specific naming in conversation context.'
+    },
+    {
+      title: 'File Path Requirements',
+      text:
+        'ALL file and directory tools now require FULL EXPANDED ABSOLUTE PATHS. Relative paths are NOT accepted. ' +
+        'Use GetWorkingDir to get the current working directory, or GetRootMaximusDir to get the gateway root path. ' +
+        'Construct paths like: `${GetWorkingDir.workingDir}/subdir/file.txt`. ' +
+        'Tools will return an error if you provide a relative path. ' +
+        'Available file/directory tools: ReadFile, Grep, ReplaceFile, StrReplaceFile, CreateDir, RemoveDir, CopyDir, MoveDir, CopyFile, MoveFile, RemoveFile. ' +
+        'RemoveDir and RemoveFile accept deletionKind: "permanently" or "system_trash" (default).'
+    },
+    {
+      title: 'Path Discovery Tools',
+      text:
+        'GetWorkingDir: Returns { success, workingDir, expandedPath } - the current working directory. ' +
+        'GetRootMaximusDir: Returns { success, rootMaximusDir, toolsDir } - where the gateway is running from. ' +
+        'Always use these tools first when you need to construct file paths. Do not guess paths.'
     },
     {
       title: 'Conversation Compaction',
