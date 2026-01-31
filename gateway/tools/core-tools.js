@@ -760,7 +760,7 @@ export async function disableCronJobTool(input, context) {
 }
 
 export async function getWorkingDirTool() {
-  const cwd = process.cwd();
+  const cwd = process.env.HOME || process.cwd();
   return {
     success: true,
     workingDir: cwd,
@@ -769,14 +769,13 @@ export async function getWorkingDirTool() {
 }
 
 export async function getRootMaximusDirTool() {
-  const currentFilePath = fileURLToPath(import.meta.url);
-  const toolsDir = dirname(currentFilePath);
-  const gatewayDir = dirname(toolsDir);
+  const gatewayDir = process.cwd();
+  const toolsDir = resolve(gatewayDir, 'tools');
 
   return {
     success: true,
     rootMaximusDir: resolve(gatewayDir),
-    toolsDir: resolve(toolsDir)
+    toolsDir
   };
 }
 
