@@ -1,5 +1,6 @@
 import Bunnix from '@bunnix/core';
 import { send, settingsStore, formatValue } from '../helpers.js';
+import { openModelSelector } from '../../../state/models.js';
 import './KimiPanel.css';
 
 const { div, h4, p, button, input, span } = Bunnix;
@@ -35,6 +36,20 @@ export function KimiPanel({ settings: kimiSettings }) {
           class: 'modal-btn save',
           click: saveApiKey
         }, isSaving.map(v => v ? 'SAVING...' : 'SAVE_KEY'))
+      )
+    ),
+
+    div({ class: 'settings-section' },
+      h4('Model Selection'),
+      div({ class: 'settings-row' },
+        span({ class: 'settings-label' }, 'Current Model'),
+        span({ class: 'settings-value' }, formatValue(kimiData.model, 'Unknown'))
+      ),
+      div({ class: 'modal-actions', style: 'margin-top: 12px;' },
+        button({
+          class: 'modal-btn save',
+          click: () => openModelSelector('kimi', kimiData.model)
+        }, 'Select Model')
       )
     ),
 

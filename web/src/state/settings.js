@@ -109,6 +109,7 @@ export const authTab = settingsStore.state.map(s => s.authTab);
 export const settings = settingsStore.state.map(s => s.settings);
 export const providers = settingsStore.state.map(s => s.providers);
 export const docs = settingsStore.state.map(s => s.docs);
+export const currentModelFromSettings = settingsStore.state.map(s => s.settings?.currentModel || null);
 
 // Helper functions
 export function openSettings() {

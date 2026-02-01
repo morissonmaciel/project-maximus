@@ -42,22 +42,19 @@ export function installLifecycleHandlers() {
       connectionStore.markProviderSelectorPrompted();
     }
 
-    // Update current model based on provider
-    const prov = data.provider;
-    let model = null;
-    if (prov === 'anthropic') {
-      model = 'claude-sonnet-4';
-    } else if (prov === 'openai-codex') {
-      model = 'gpt-5.1-codex-max';
-    } else if (prov === 'kimi') {
-      model = 'kimi-k2.5';
-    } else if (prov === 'nvidia') {
-      model = 'moonshotai/kimi-k2.5';
-    } else if (prov === 'ollama') {
-      model = data.ollama?.model || null;
-    }
-    if (model) {
-      connectionStore.setCurrentModel({ value: model });
+    // Update current model from status if provided, otherwise infer from provider
+    if (data.currentModel !== undefined) {
+      connectionStore.setCurrentModel({ value: data.currentModel });
+    } else {
+      // Fallback: infer model from provider
+      const prov = data.provider;
+      let model = null;
+      if (prov === 'ollama') {
+        model = data.ollama?.model || null;
+      }
+      if (model) {
+        connectionStore.setCurrentModel({ value: model });
+      }
     }
   });
 
@@ -67,6 +64,9 @@ export function installLifecycleHandlers() {
     }
     if (data.providerReady !== undefined) {
       connectionStore.setProviderReady({ value: data.providerReady });
+    }
+    if (data.currentModel !== undefined) {
+      connectionStore.setCurrentModel({ value: data.currentModel });
     }
 
     // Auto-open provider selector if no provider is set

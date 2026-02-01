@@ -1,5 +1,7 @@
 # Maximus v0.5.0 (Open Beta)
 
+![Maximus Logo](docs/images/maximus-large.png)
+
 A multi-provider LLM gateway with an optimized web interface, tool execution, and persistent memory.
 
 > **Disclaimer**: This is an open beta release (v0.5.0). Features and APIs may change. Please report issues at https://github.com/anthropics/project-maximus/issues

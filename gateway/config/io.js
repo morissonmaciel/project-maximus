@@ -6,6 +6,7 @@ export function saveConfig(state) {
     fs.mkdirSync(SETTINGS_DIR, { recursive: true });
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify({
       provider: state.provider,
+      currentModel: state.currentModel,
       lastSessionId: state.lastSessionId,
       system: state.systemConfig,
       anthropic: {

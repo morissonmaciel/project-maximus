@@ -1,0 +1,48 @@
+/* Model Selector Dialog Styles */
+.model-selector .modal {
+  max-width: 480px;
+}
+
+.model-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-lg) 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.model-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.model-card:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+.model-card.selected {
+  border-color: var(--status-success);
+  background: var(--status-success-bg);
+}
+
+.model-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  font-family: var(--font-family-mono, monospace);
+}
+
+.model-check {
+  color: var(--status-success);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+}

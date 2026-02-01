@@ -40,6 +40,8 @@ export const MessageTypes = {
   SETTINGS: 'settings',
   PROVIDERS: 'providers',
   PROVIDER_SET: 'providerSet',
+  MODELS: 'models',
+  MODEL_SET: 'modelSet',
   OLLAMA_MODEL_SET: 'ollamaModelSet',
   BRAVE_API_KEY_SET: 'braveApiKeySet',
 

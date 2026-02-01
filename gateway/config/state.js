@@ -16,6 +16,7 @@ import {
 
 export const configState = {
   provider: null,
+  currentModel: null,
   anthropicCredentials: null,
   openaiCodexCredentials: null,
   kimiCredentials: null,

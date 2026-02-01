@@ -5,6 +5,7 @@
 
 import { setWsSend as setConnectionWsSend } from '../state/connection.js';
 import { setWsSend as setSettingsWsSend } from '../state/settings.js';
+import { setWsSend as setModelsWsSend } from '../state/models.js';
 import { send } from '../lib/websocket.js';
 
 import { installLifecycleHandlers } from './lifecycle.js';
@@ -30,6 +31,7 @@ export function installAllHandlers() {
   // Pass send function to stores that need it
   setConnectionWsSend(send);
   setSettingsWsSend(send);
+  setModelsWsSend(send);
 
   // Install all handler modules
   installLifecycleHandlers();

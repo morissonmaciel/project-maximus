@@ -1,0 +1,38 @@
+{
+  "providers": {
+    "anthropic": {
+      "enabled": true,
+      "models": [
+        "claude-sonnet-4-20250514",
+        "claude-opus-4-20250514"
+      ]
+    },
+    "openai-codex": {
+      "enabled": true,
+      "models": [
+        "gpt-5.2-codex",
+        "gpt-5.2",
+        "gpt-5.1-codex-max",
+        "gpt-5.1-codex-mini"
+      ]
+    },
+    "kimi": {
+      "enabled": true,
+      "models": [
+        "kimi-k2.5",
+        "kimi-k2"
+      ]
+    },
+    "nvidia": {
+      "enabled": true,
+      "models": [
+        "moonshotai/kimi-k2.5",
+        "meta/llama-3.1-405b-instruct"
+      ]
+    },
+    "ollama": {
+      "enabled": true,
+      "models": []
+    }
+  }
+}

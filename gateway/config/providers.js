@@ -1,4 +1,4 @@
-export function buildStatusSnapshot(configState, runtimeState) {
+export function buildStatusSnapshot(configState, runtimeState, providersConfig = {}) {
   const { lastOllamaStatus } = runtimeState;
   const anthropicConfigured = !!configState.anthropicClient;
   const ollamaReachable = lastOllamaStatus?.reachable ?? null;
@@ -8,22 +8,28 @@ export function buildStatusSnapshot(configState, runtimeState) {
   const nvidiaConfigured = !!configState.nvidiaCredentials;
   const provider = configState.provider;
 
+  // Check provider enabled status from config
+  const isProviderEnabled = (id) => {
+    const providerCfg = providersConfig[id];
+    return providerCfg ? providerCfg.enabled !== false : true;
+  };
+
   let providerReady = false;
   let providerError = null;
 
   if (provider === 'anthropic') {
-    providerReady = anthropicConfigured;
+    providerReady = anthropicConfigured && isProviderEnabled('anthropic');
   } else if (provider === 'ollama') {
-    providerReady = ollamaReady;
+    providerReady = ollamaReady && isProviderEnabled('ollama');
     if (ollamaReachable === false) {
       providerError = lastOllamaStatus?.error || 'Ollama unreachable';
     }
   } else if (provider === 'openai-codex') {
-    providerReady = openaiCodexConfigured;
+    providerReady = openaiCodexConfigured && isProviderEnabled('openai-codex');
   } else if (provider === 'kimi') {
-    providerReady = kimiConfigured;
+    providerReady = kimiConfigured && isProviderEnabled('kimi');
   } else if (provider === 'nvidia') {
-    providerReady = nvidiaConfigured;
+    providerReady = nvidiaConfigured && isProviderEnabled('nvidia');
   }
 
   return {
@@ -31,28 +37,34 @@ export function buildStatusSnapshot(configState, runtimeState) {
     provider,
     providerReady,
     providerError,
+    currentModel: configState.currentModel || null,
     anthropic: {
       configured: anthropicConfigured,
-      authType: configState.anthropicCredentials?.type || null
+      authType: configState.anthropicCredentials?.type || null,
+      enabled: isProviderEnabled('anthropic')
     },
     ollama: {
       reachable: ollamaReachable,
-      model: configState.ollamaConfig.model
+      model: configState.ollamaConfig.model,
+      enabled: isProviderEnabled('ollama')
     },
     'openai-codex': {
-      configured: openaiCodexConfigured
+      configured: openaiCodexConfigured,
+      enabled: isProviderEnabled('openai-codex')
     },
     kimi: {
-      configured: kimiConfigured
+      configured: kimiConfigured,
+      enabled: isProviderEnabled('kimi')
     },
     nvidia: {
-      configured: nvidiaConfigured
+      configured: nvidiaConfigured,
+      enabled: isProviderEnabled('nvidia')
     }
   };
 }
 
-export function buildConfigurationSnapshot({ configState, runtimeState, gatewayState }) {
-  const status = buildStatusSnapshot(configState, runtimeState);
+export function buildConfigurationSnapshot({ configState, runtimeState, gatewayState }, providersConfig = {}) {
+  const status = buildStatusSnapshot(configState, runtimeState, providersConfig);
   const {
     lastAnthropicUsage,
     lastAnthropicModel,
@@ -69,17 +81,31 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
     lastNvidiaLimits,
     lastOllamaUsage
   } = runtimeState;
-  
+
+  // Get provider models from config
+  const getProviderModels = (id) => {
+    const cfg = providersConfig[id];
+    return cfg?.models || [];
+  };
+
+  const isProviderEnabled = (id) => {
+    const cfg = providersConfig[id];
+    return cfg ? cfg.enabled !== false : true;
+  };
+
   return {
     sessionId: configState.lastSessionId,
     gatewayState,
     provider: configState.provider,
+    currentModel: configState.currentModel || null,
     providerReady: status.providerReady,
     providers: {
       anthropic: {
         configured: !!configState.anthropicClient,
         authType: configState.anthropicCredentials?.type || null,
         model: lastAnthropicModel,
+        enabled: isProviderEnabled('anthropic'),
+        models: getProviderModels('anthropic'),
         limits: {
           maxTokens: lastAnthropicLimits.maxTokens,
           rate: lastAnthropicRateLimits
@@ -90,11 +116,15 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
         configured: !!configState.ollamaConfig.model,
         reachable: runtimeState.lastOllamaStatus?.reachable ?? null,
         model: configState.ollamaConfig.model,
+        enabled: isProviderEnabled('ollama'),
+        models: runtimeState.lastOllamaStatus?.models || [],
         usage: lastOllamaUsage
       },
       'openai-codex': {
         configured: !!configState.openaiCodexCredentials,
         model: lastOpenAICodexModel,
+        enabled: isProviderEnabled('openai-codex'),
+        models: getProviderModels('openai-codex'),
         limits: {
           maxTokens: lastOpenAICodexLimits.maxTokens
         },
@@ -103,6 +133,8 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
       kimi: {
         configured: !!configState.kimiCredentials,
         model: lastKimiModel,
+        enabled: isProviderEnabled('kimi'),
+        models: getProviderModels('kimi'),
         limits: {
           maxTokens: lastKimiLimits.maxTokens
         },
@@ -111,6 +143,8 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
       nvidia: {
         configured: !!configState.nvidiaCredentials,
         model: lastNvidiaModel,
+        enabled: isProviderEnabled('nvidia'),
+        models: getProviderModels('nvidia'),
         limits: {
           maxTokens: lastNvidiaLimits.maxTokens
         },
@@ -127,11 +161,11 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
   };
 }
 
-export function buildSettingsSnapshot(configState, runtimeState) {
-    const { 
-        lastAnthropicUsage, 
-        lastAnthropicModel, 
-        lastAnthropicLimits, 
+export function buildSettingsSnapshot(configState, runtimeState, providersConfig = {}) {
+    const {
+        lastAnthropicUsage,
+        lastAnthropicModel,
+        lastAnthropicLimits,
         lastAnthropicRateLimits,
         lastOpenAICodexUsage,
         lastOpenAICodexModel,
@@ -145,14 +179,28 @@ export function buildSettingsSnapshot(configState, runtimeState) {
         lastOllamaUsage,
         lastOllamaStatus
     } = runtimeState;
-    
+
+    // Get provider models from config
+    const getProviderModels = (id) => {
+        const cfg = providersConfig[id];
+        return cfg?.models || [];
+    };
+
+    const isProviderEnabled = (id) => {
+        const cfg = providersConfig[id];
+        return cfg ? cfg.enabled !== false : true;
+    };
+
     return {
         provider: configState.provider,
+        currentModel: configState.currentModel || null,
         providers: {
           anthropic: {
             configured: !!configState.anthropicClient,
             authType: configState.anthropicCredentials?.type || null,
             model: lastAnthropicModel,
+            enabled: isProviderEnabled('anthropic'),
+            models: getProviderModels('anthropic'),
             usage: lastAnthropicUsage,
             limits: {
               maxTokens: lastAnthropicLimits.maxTokens,
@@ -162,6 +210,8 @@ export function buildSettingsSnapshot(configState, runtimeState) {
           'openai-codex': {
              configured: !!configState.openaiCodexCredentials,
              model: lastOpenAICodexModel,
+             enabled: isProviderEnabled('openai-codex'),
+             models: getProviderModels('openai-codex'),
              usage: lastOpenAICodexUsage,
              limits: {
                maxTokens: lastOpenAICodexLimits.maxTokens
@@ -170,6 +220,8 @@ export function buildSettingsSnapshot(configState, runtimeState) {
           kimi: {
              configured: !!configState.kimiCredentials,
              model: lastKimiModel,
+             enabled: isProviderEnabled('kimi'),
+             models: getProviderModels('kimi'),
              usage: lastKimiUsage,
              limits: {
                maxTokens: lastKimiLimits.maxTokens
@@ -178,6 +230,8 @@ export function buildSettingsSnapshot(configState, runtimeState) {
           nvidia: {
              configured: !!configState.nvidiaCredentials,
              model: lastNvidiaModel,
+             enabled: isProviderEnabled('nvidia'),
+             models: getProviderModels('nvidia'),
              usage: lastNvidiaUsage,
              limits: {
                maxTokens: lastNvidiaLimits.maxTokens
@@ -189,6 +243,7 @@ export function buildSettingsSnapshot(configState, runtimeState) {
             reachable: lastOllamaStatus?.reachable ?? null,
             error: lastOllamaStatus?.error || null,
             models: lastOllamaStatus?.models || [],
+            enabled: isProviderEnabled('ollama'),
             usage: lastOllamaUsage
           }
         },

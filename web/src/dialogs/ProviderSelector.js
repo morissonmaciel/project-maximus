@@ -30,7 +30,7 @@ function isSelectable(item) {
 
 export function ProviderSelector() {
   const isOpen = providerSelectorOpen.map(o => o);
-  const providers = providerList.map(p => p || []);
+  const providers = providerList.map(p => (p || []).filter(item => item.enabled !== false));
   const currentProvider = provider.map(p => p);
   const selected = selectedProvider.map(p => p);
 

@@ -7,6 +7,8 @@ import { on } from '../lib/websocket.js';
 import { messagesStore } from '../state/messages.js';
 import { authStore } from '../state/auth.js';
 import { notificationStore } from '../state/notification.js';
+import { connectionStore } from '../state/connection.js';
+import { modelsStore, setAvailableModels } from '../state/models.js';
 import { generateId } from '../utils/helpers.js';
 
 /**
@@ -85,5 +87,21 @@ export function installMessagingHandlers() {
 
     // Try to show system notification
     showSystemNotification(title, message);
+  });
+
+  // Model selection handlers
+  on('models', (data) => {
+    if (data?.models) {
+      setAvailableModels(data.models);
+    }
+  });
+
+  on('modelSet', (data) => {
+    if (data?.success) {
+      // Update connection store with new model
+      connectionStore.setCurrentModel({ value: data.model });
+      // Also update models store
+      modelsStore.setSelectedModel({ model: data.model });
+    }
   });
 }

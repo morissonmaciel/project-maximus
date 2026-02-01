@@ -890,36 +890,48 @@ wss.on('connection', (ws) => {
         case 'getProviders': {
           await config.refreshOllamaStatus();
           const currentConfig = config.getConfigState();
-          messenger.providers([
+          const providersConfig = config.getProvidersConfig();
+
+          // Build provider list, filtering out disabled providers
+          const allProviders = [
             {
               id: 'anthropic',
               label: 'Anthropic',
               configured: !!currentConfig.anthropicClient,
-              authType: currentConfig.anthropicCredentials?.type || null
+              authType: currentConfig.anthropicCredentials?.type || null,
+              enabled: providersConfig.anthropic?.enabled !== false
             },
             {
               id: 'openai-codex',
               label: 'OpenAI Codex',
-              configured: !!currentConfig.openaiCodexCredentials
+              configured: !!currentConfig.openaiCodexCredentials,
+              enabled: providersConfig['openai-codex']?.enabled !== false
             },
             {
               id: 'kimi',
               label: 'Kimi',
-              configured: !!currentConfig.kimiCredentials
+              configured: !!currentConfig.kimiCredentials,
+              enabled: providersConfig.kimi?.enabled !== false
             },
             {
               id: 'nvidia',
               label: 'NVIDIA',
-              configured: !!currentConfig.nvidiaCredentials
+              configured: !!currentConfig.nvidiaCredentials,
+              enabled: providersConfig.nvidia?.enabled !== false
             },
             {
               id: 'ollama',
               label: 'Ollama',
               reachable: config.getLastOllamaStatus()?.reachable ?? null,
               error: config.getLastOllamaStatus()?.error || null,
-              model: currentConfig.ollamaConfig.model
+              model: currentConfig.ollamaConfig.model,
+              enabled: providersConfig.ollama?.enabled !== false
             }
-          ]);
+          ];
+
+          // Filter to only enabled providers
+          const enabledProviders = allProviders.filter(p => p.enabled);
+          messenger.providers(enabledProviders);
           break;
         }
 
@@ -980,6 +992,49 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'getModels': {
+          const { provider: targetProvider } = message;
+          const providerId = targetProvider || configState.provider;
+          if (!providerId) {
+            messenger.error('No provider specified');
+            break;
+          }
+          const models = config.getProviderModels(providerId);
+          messenger.models(models, providerId);
+          break;
+        }
+
+        case 'setModel': {
+          const { model, provider: targetProvider } = message;
+          if (!model) {
+            messenger.error('Model is required');
+            break;
+          }
+          const providerId = targetProvider || configState.provider;
+          if (!providerId) {
+            messenger.error('No provider selected');
+            break;
+          }
+
+          // Validate provider and model
+          const validation = config.validateProviderAndModel(providerId, model);
+          if (!validation.valid) {
+            messenger.notification(
+              'Provider Unavailable',
+              validation.error || 'The selected provider is currently disabled or the model is not supported. Please select a different provider.',
+              'provider-disabled'
+            );
+            messenger.modelSet(false, model, providerId);
+            break;
+          }
+
+          // Update config with selected model
+          config.updateConfig({ currentModel: model });
+          messenger.modelSet(true, model, providerId);
+          sendStatus(ws);
+          break;
+        }
+
         default:
           console.warn(`[Gateway] Unknown message type: ${message.type}`);
           messenger.error(`Unknown: ${message.type}`);
@@ -1006,6 +1061,32 @@ async function handleChat(ws, message, configState, messenger, meta = null) {
   if (!provider) {
     messenger.error('No provider selected');
     return;
+  }
+
+  // Validate provider is enabled
+  if (!config.isProviderEnabled(provider)) {
+    messenger.notification(
+      'Provider Unavailable',
+      `The selected provider '${provider}' is currently disabled. Please select a different provider.`,
+      'provider-disabled'
+    );
+    messenger.error(`Provider '${provider}' is disabled`);
+    return;
+  }
+
+  // Validate model if one is selected
+  const currentModel = configState.currentModel;
+  if (currentModel) {
+    const validation = config.validateProviderAndModel(provider, currentModel);
+    if (!validation.valid) {
+      messenger.notification(
+        'Model Unavailable',
+        validation.error || 'The selected model is not supported by this provider. Please select a different model.',
+        'model-unavailable'
+      );
+      messenger.error(validation.error || 'Invalid model selection');
+      return;
+    }
   }
 
   const state = sessionStates.get(ws.sessionId) || { busy: false, queue: [] };
@@ -1195,7 +1276,7 @@ async function handleAnthropicChat(ws, messages, systemPrompt, memoryText, confi
     baseMessages: messages,
     systemPrompt,
     memoryText,
-    model: DEFAULT_MODEL,
+    model: configState.currentModel || DEFAULT_MODEL,
     maxTokens: DEFAULT_MAX_TOKENS,
     isOAuth: configState.anthropicCredentials.type === 'oauth',
     runToolCall,
@@ -1276,7 +1357,7 @@ async function handleOpenAICodexChat(ws, messages, systemPrompt, memoryText, con
     baseMessages: messages,
     systemPrompt,
     memoryText,
-    model: DEFAULT_OPENAI_CODEX_MODEL,
+    model: configState.currentModel || DEFAULT_OPENAI_CODEX_MODEL,
     runToolCall,
     memoryStore,
     onStats: (updates) => {
@@ -1305,7 +1386,7 @@ async function handleKimiChat(ws, messages, systemPrompt, memoryText, configStat
 
   const kimiConfig = {
     endpoint: configState.kimiConfig?.endpoint || DEFAULT_KIMI_ENDPOINT,
-    model: configState.kimiConfig?.model || DEFAULT_KIMI_MODEL,
+    model: configState.currentModel || configState.kimiConfig?.model || DEFAULT_KIMI_MODEL,
     maxOutputTokens: configState.kimiConfig?.maxOutputTokens || DEFAULT_KIMI_MAX_OUTPUT_TOKENS,
     reasoningEffort: configState.kimiConfig?.reasoningEffort || DEFAULT_KIMI_REASONING_EFFORT,
     streaming: configState.kimiConfig?.streaming !== false,
@@ -1358,7 +1439,7 @@ async function handleNvidiaChat(ws, messages, systemPrompt, memoryText, configSt
 
   const nvidiaConfig = {
     endpoint: configState.nvidiaConfig?.endpoint || DEFAULT_NVIDIA_ENDPOINT,
-    model: configState.nvidiaConfig?.model || DEFAULT_NVIDIA_MODEL,
+    model: configState.currentModel || configState.nvidiaConfig?.model || DEFAULT_NVIDIA_MODEL,
     maxTokens: configState.nvidiaConfig?.maxTokens || DEFAULT_NVIDIA_MAX_TOKENS,
     temperature: configState.nvidiaConfig?.temperature ?? DEFAULT_NVIDIA_TEMPERATURE,
     topP: configState.nvidiaConfig?.topP ?? DEFAULT_NVIDIA_TOP_P,

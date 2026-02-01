@@ -100,6 +100,7 @@ export function normalizeConfig(config = {}) {
 
   result.lastSessionId = config.lastSessionId || null;
   result.systemConfig = config.system || {};
+  result.currentModel = config.currentModel || null;
 
   return result;
 }

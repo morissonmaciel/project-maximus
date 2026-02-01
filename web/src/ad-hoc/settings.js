@@ -10,6 +10,10 @@ import { connectionStore } from '../state/connection.js';
 export function installSettingsHandlers() {
   on('settings', (data) => {
     settingsStore.setSettings({ settings: data });
+    // Also update currentModel in connection store if present
+    if (data?.currentModel) {
+      connectionStore.setCurrentModel({ value: data.currentModel });
+    }
   });
 
   on('providers', (data) => {

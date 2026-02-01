@@ -1,7 +1,7 @@
 import Bunnix from '@bunnix/core';
 import { isConnected, providerReady } from '../../state/connection.js';
 import { openSettings } from '../../state/settings.js';
-import LogoSmall from "../../images/maximus-medium.png";
+import LogoSmall from "../../images/maximus-small.png";
 import './Header.css';
 
 const { div, img, h2, button } = Bunnix;

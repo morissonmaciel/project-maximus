@@ -2,6 +2,7 @@ import Bunnix, { Show } from '@bunnix/core';
 import { authTab } from '../../../state/settings.js';
 import { setAuthTab } from '../../../state/settings.js';
 import { send, settingsStore, formatValue } from '../helpers.js';
+import { openModelSelector } from '../../../state/models.js';
 import './AnthropicPanel.css';
 
 const { div, h4, p, button, input, span, ol, li } = Bunnix;
@@ -134,11 +135,21 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
     ),
 
     div({ class: 'settings-section' },
-      h4('Usage (Last Response)'),
+      h4('Model Selection'),
       div({ class: 'settings-row' },
-        span({ class: 'settings-label' }, 'Model'),
+        span({ class: 'settings-label' }, 'Current Model'),
         span({ class: 'settings-value' }, formatValue(anthropicData.model, 'Unknown'))
       ),
+      div({ class: 'modal-actions', style: 'margin-top: 12px;' },
+        button({
+          class: 'modal-btn save',
+          click: () => openModelSelector('anthropic', anthropicData.model)
+        }, 'Select Model')
+      )
+    ),
+
+    div({ class: 'settings-section' },
+      h4('Usage (Last Response)'),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Max tokens'),
         span({ class: 'settings-value' }, formatValue(limits.maxTokens))

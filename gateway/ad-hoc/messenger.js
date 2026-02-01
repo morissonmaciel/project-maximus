@@ -123,6 +123,14 @@ export class ClientMessenger {
     this.send(MessageTypes.PROVIDER_SET, { provider });
   }
 
+  models(modelsList, provider) {
+    this.send(MessageTypes.MODELS, { models: modelsList, provider });
+  }
+
+  modelSet(success, model, provider) {
+    this.send(MessageTypes.MODEL_SET, { success, model, provider });
+  }
+
   ollamaModelSet(success, model) {
     this.send(MessageTypes.OLLAMA_MODEL_SET, { success, model });
   }

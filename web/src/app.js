@@ -1,7 +1,7 @@
 import Bunnix from '@bunnix/core';
 import { Header } from './design-system/navigation/index.js';
 import { ChatPage } from './pages/index.js';
-import { SettingsModal, ProviderSelector, AuthDialog, NotificationDialog } from './dialogs/index.js';
+import { SettingsModal, ProviderSelector, AuthDialog, NotificationDialog, ModelSelector } from './dialogs/index.js';
 import './styles.css';
 import './dialogs/NotificationDialog.css';
 
@@ -30,6 +30,7 @@ export function App() {
     ProviderSelector(),
     SettingsModal(),
     AuthDialog(),
-    NotificationDialog()
+    NotificationDialog(),
+    ModelSelector()
   );
 }

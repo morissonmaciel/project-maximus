@@ -15,6 +15,20 @@ import './SettingsModal.css';
 
 const { div, h3, button, span } = Bunnix;
 
+// Provider IDs that can be disabled
+const PROVIDER_IDS = ['anthropic', 'openai-codex', 'kimi', 'nvidia', 'ollama'];
+
+function isProviderEnabled(providersData, providerId) {
+  if (!providersData) return true;
+  if (Array.isArray(providersData.providers)) {
+    const match = providersData.providers.find(p => p.id === providerId);
+    if (!match) return false;
+    return match.enabled !== false;
+  }
+  if (!providersData[providerId]) return true;
+  return providersData[providerId].enabled !== false;
+}
+
 export function SettingsModal() {
   const isOpen = isSettingsOpen.map(o => o);
   const panel = activeSettingsPanel.map(p => p);
@@ -32,15 +46,22 @@ export function SettingsModal() {
     }
   };
 
-  const navButtons = [
-    { id: 'anthropic', label: 'Anthropic' },
-    { id: 'openai-codex', label: 'OpenAI Codex' },
-    { id: 'kimi', label: 'Kimi' },
-    { id: 'nvidia', label: 'NVIDIA' },
-    { id: 'ollama', label: 'Ollama' },
-    { id: 'web', label: 'Web' },
-    { id: 'memory', label: 'Memory' }
+  // Build nav buttons dynamically based on provider enabled status
+  const allNavButtons = [
+    { id: 'anthropic', label: 'Anthropic', type: 'provider' },
+    { id: 'openai-codex', label: 'OpenAI Codex', type: 'provider' },
+    { id: 'kimi', label: 'Kimi', type: 'provider' },
+    { id: 'nvidia', label: 'NVIDIA', type: 'provider' },
+    { id: 'ollama', label: 'Ollama', type: 'provider' },
+    { id: 'web', label: 'Web', type: 'system' },
+    { id: 'memory', label: 'Memory', type: 'system' }
   ];
+
+  // Filter nav buttons to only show enabled providers
+  const visibleNavButtons = allNavButtons.filter(btn => {
+    if (btn.type === 'system') return true;
+    return isProviderEnabled(pData, btn.id);
+  });
 
   return Show(isOpen, () =>
     div({ class: 'settings-modal-overlay', click: handleOverlayClick },
@@ -52,7 +73,7 @@ export function SettingsModal() {
 
         div({ class: 'settings-modal-body' },
           div({ class: 'settings-sidebar' },
-            ...navButtons.map(btn =>
+            ...visibleNavButtons.map(btn =>
               button({
                 class: Bunnix.Compute(panel, p => `settings-nav-btn ${p === btn.id ? 'active' : ''}`),
                 click: () => setSettingsPanel(btn.id)
@@ -61,11 +82,11 @@ export function SettingsModal() {
           ),
 
           div({ class: 'settings-content' },
-            Show(panel.map(p => p === 'anthropic'), () => AnthropicPanel({ settings: sData })),
-            Show(panel.map(p => p === 'openai-codex'), () => OpenAICodexPanel({ settings: sData })),
-            Show(panel.map(p => p === 'kimi'), () => KimiPanel({ settings: sData })),
-            Show(panel.map(p => p === 'nvidia'), () => NvidiaPanel({ settings: sData })),
-            Show(panel.map(p => p === 'ollama'), () => OllamaPanel({ settings: sData, providers: pData })),
+            Show(panel.map(p => p === 'anthropic' && isProviderEnabled(pData, 'anthropic')), () => AnthropicPanel({ settings: sData })),
+            Show(panel.map(p => p === 'openai-codex' && isProviderEnabled(pData, 'openai-codex')), () => OpenAICodexPanel({ settings: sData })),
+            Show(panel.map(p => p === 'kimi' && isProviderEnabled(pData, 'kimi')), () => KimiPanel({ settings: sData })),
+            Show(panel.map(p => p === 'nvidia' && isProviderEnabled(pData, 'nvidia')), () => NvidiaPanel({ settings: sData })),
+            Show(panel.map(p => p === 'ollama' && isProviderEnabled(pData, 'ollama')), () => OllamaPanel({ settings: sData, providers: pData })),
             Show(panel.map(p => p === 'web'), () => WebPanel({ settings: sData })),
             Show(panel.map(p => p === 'memory'), () => MemoryPanel({ docs: dData }))
           )
