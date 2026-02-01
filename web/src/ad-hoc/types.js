@@ -27,6 +27,10 @@ export const MessageTypes = {
   // Messaging
   PUSH_MESSAGE: 'pushMessage',
 
+  // Authorization
+  AUTH_REQUEST: 'authRequest',
+  AUTH_RESPONSE: 'authResponse',
+
   // Settings
   GET_SETTINGS: 'getSettings',
   SETTINGS: 'settings',

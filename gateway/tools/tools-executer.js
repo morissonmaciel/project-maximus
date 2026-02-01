@@ -1,6 +1,7 @@
-import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, getWorkingDirTool, getRootMaximusDirTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool } from './core-tools.js';
+import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, requestAuthorizationTool, checkAuthorizationTool, listAuthorizationsTool, getWorkingDirTool, getRootMaximusDirTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool } from './core-tools.js';
 import { ACCESSORY_TOOL_DEFINITIONS, ACCESSORY_OLLAMA_TOOL_DEFINITIONS, runCommandTool, webFetchTool, webSearchTool, readFileTool, grepTool, replaceFileTool, strReplaceFileTool, createDirTool, removeDirTool, copyDirTool, moveDirTool, copyFileTool, moveFileTool, removeFileTool } from './accessory-tools.js';
 import { normalizeToolName } from './names.js';
+import { PermissionGuard, extractTargetDir } from '../permission/index.js';
 
 export const TOOL_DEFINITIONS = [...ACCESSORY_TOOL_DEFINITIONS, ...CORE_TOOL_DEFINITIONS];
 export const OLLAMA_TOOL_DEFINITIONS = [...ACCESSORY_OLLAMA_TOOL_DEFINITIONS, ...CORE_OLLAMA_TOOL_DEFINITIONS];
@@ -19,6 +20,8 @@ export const OLLAMA_TOOL_DEFINITIONS = [...ACCESSORY_OLLAMA_TOOL_DEFINITIONS, ..
  * @returns {Function} runToolCall function
  */
 export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, memoryStore, sessionId, provider, summarizeMessages, cronStore, skillsStore, messenger }) {
+  const permissionGuard = new PermissionGuard(memoryStore);
+
   /**
    * Execute a tool call
    *
@@ -35,9 +38,11 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
     // Normalize tool name to PascalCase (backward compatibility)
     const toolName = normalizeToolName(toolCall.name);
 
+    const input = toolCall.input || {};
+
     const inputPreview = (() => {
       try {
-        return JSON.stringify(toolCall.input || {});
+        return JSON.stringify(input);
       } catch {
         return '[unserializable input]';
       }
@@ -45,7 +50,44 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
     console.log(`[Tool:${toolName}] Input: ${inputPreview}`);
 
     // Build context for tools that support memory ingestion
-    const context = { memoryStore, sessionId, provider, summarizeMessages, cronStore, skillsStore, messenger };
+    const context = { memoryStore, sessionId, provider, summarizeMessages, cronStore, skillsStore, messenger, permissionGuard };
+
+    const fileTools = [
+      'ReadFile', 'Grep', 'ReplaceFile', 'StrReplaceFile',
+      'CreateDir', 'RemoveDir', 'CopyDir', 'MoveDir',
+      'CopyFile', 'MoveFile', 'RemoveFile'
+    ];
+
+    if (fileTools.includes(toolName)) {
+      const targetPath = input.path || input.sourcePath || input.destPath;
+      if (targetPath) {
+        const authCheck = permissionGuard.check(toolName, targetPath);
+        if (!authCheck.allowed) {
+          if (authCheck.needsAuthorization) {
+            const requestId = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const targetDir = extractTargetDir(targetPath);
+
+            permissionGuard.storePendingOperation(requestId, {
+              sessionId,
+              toolName,
+              targetDir,
+              originalReason: input.reason,
+              originalInput: input,
+              provider
+            });
+
+            return {
+              error: `Authorization required. Call RequestAuthorization first with tool: \"${toolName}\", targetDir: \"${targetDir}\", and a reason explaining why you need access.`,
+              needsAuthorization: true,
+              tool: toolName,
+              targetDir,
+              requestId
+            };
+          }
+          return { error: authCheck.reason || 'Operation not allowed' };
+        }
+      }
+    }
 
     switch (toolName) {
       // 🛠️ ACCESSORY TOOLS
@@ -112,6 +154,15 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
 
       case 'DisableCronJob':
         return disableCronJobTool(toolCall.input || {}, context);
+
+      case 'RequestAuthorization':
+        return requestAuthorizationTool(toolCall.input || {}, context);
+
+      case 'CheckAuthorization':
+        return checkAuthorizationTool(toolCall.input || {}, context);
+
+      case 'ListAuthorizations':
+        return listAuthorizationsTool(toolCall.input || {}, context);
 
       case 'GetWorkingDir':
         return getWorkingDirTool();

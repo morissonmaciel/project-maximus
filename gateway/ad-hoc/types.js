@@ -27,6 +27,10 @@ export const MessageTypes = {
   TOOL_CALL: 'toolCall',
   TOOL_RESULT: 'toolResult',
 
+  // Authorization
+  AUTH_REQUEST: 'authRequest',
+  AUTH_RESPONSE: 'authResponse',
+
   // Configuration
   SETTINGS: 'settings',
   PROVIDERS: 'providers',

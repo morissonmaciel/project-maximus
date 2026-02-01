@@ -1,0 +1,30 @@
+.auth-dialog {
+  max-width: 520px;
+}
+
+.auth-title {
+  color: var(--status-warning, #f0883e);
+  margin-bottom: var(--spacing-md);
+}
+
+.auth-content {
+  margin: var(--spacing-lg) 0;
+}
+
+.auth-reason {
+  background: rgba(240, 136, 62, 0.1);
+  border-left: 3px solid #f0883e;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.auth-details {
+  margin: var(--spacing-sm) 0;
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: var(--text-sm);
+}
+
+.auth-label {
+  color: var(--text-muted);
+  font-weight: var(--weight-semibold);
+}

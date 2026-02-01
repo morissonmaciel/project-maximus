@@ -118,6 +118,40 @@ Disables a cron job by ID.
 }
 ```
 
+#### RequestAuthorization
+Request user authorization for file operations on a directory.
+
+**Input:**
+```json
+{
+  "reason": "Need to read configuration files in this directory",
+  "tool": "ReadFile",
+  "targetDir": "/etc/nginx"
+}
+```
+
+**When to use:**
+- Before accessing files outside the immediate workspace
+- When CheckAuthorization returns needsAuthorization: true
+- Always provide a clear, specific reason
+
+**Auto-Retry Behavior:**
+When the user approves your authorization request, the system automatically sends you an `[AUTHORIZATION EVENT]` message instructing you to retry. **Immediately retry the same file operation** - do not ask for confirmation. The retry will succeed because authorization is now granted.
+
+#### CheckAuthorization
+Check if authorization exists without requesting new authorization.
+
+**Input:**
+```json
+{
+  "tool": "ReadFile",
+  "targetDir": "/etc/nginx"
+}
+```
+
+#### ListAuthorizations
+List all stored authorizations.
+
 #### GetCurrentTime
 Returns current UTC and local server time.
 

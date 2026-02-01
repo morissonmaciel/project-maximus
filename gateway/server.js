@@ -84,7 +84,7 @@ async function triggerCronMessage(sessionId, content, meta = {}) {
   const messenger = new ClientMessenger(ws);
   messenger.pushMessage(content, { source: 'cron', ...meta });
   const configState = config.getConfigState();
-  await handleChat(ws, { type: 'chat', messages: [{ role: 'user', content }] }, configState, messenger);
+  await handleChat(ws, { type: 'chat', messages: [{ role: 'user', content }] }, configState, messenger, meta);
 }
 
 /**
@@ -553,7 +553,8 @@ wss.on('connection', (ws) => {
         if (history.length) {
           messenger.history(history.map((row) => ({
             role: row.role,
-            content: row.content
+            content: row.content,
+            meta: row.meta
           })));
         }
       } catch (err) {
@@ -741,6 +742,52 @@ wss.on('connection', (ws) => {
           await handleChat(ws, message, configState, messenger);
           break;
 
+        case 'authResponse': {
+          const { requestId, authorized, reason } = message;
+
+          const resolver = global.__pendingAuthResolvers?.get(requestId);
+          if (resolver) {
+            resolver.resolve({ authorized, reason });
+            global.__pendingAuthResolvers.delete(requestId);
+          }
+
+          const pendingOp = global.__pendingAuthOperations?.get(requestId);
+          if (pendingOp) {
+            const {
+              sessionId: pendingSessionId,
+              toolName,
+              targetDir,
+              originalReason
+            } = pendingOp;
+
+            if (memoryStore && toolName && targetDir) {
+              memoryStore.setPermission(toolName, targetDir, {
+                authorized: !!authorized,
+                reason: reason || originalReason || 'User response'
+              });
+            }
+
+            if (authorized) {
+              const authEventContent = `[AUTHORIZATION EVENT]\nAuthorization granted for ${toolName} on ${targetDir}.\nThe user has approved your request: \"${originalReason || reason || ''}\"\n\nPlease retry your previous file operation now.\n[/AUTHORIZATION EVENT]`;
+              const targetSessionId = pendingSessionId || ws.sessionId;
+              const targetWs = sessionSockets.get(targetSessionId) || ws;
+              const targetMessenger = new ClientMessenger(targetWs);
+              targetMessenger.pushMessage(authEventContent, { source: 'authorization', hidden: true });
+              await handleChat(
+                targetWs,
+                { type: 'chat', messages: [{ role: 'user', content: authEventContent }], sessionId: targetSessionId },
+                config.getConfigState(),
+                targetMessenger,
+                { hidden: true, source: 'authorization' }
+              );
+            }
+
+            global.__pendingAuthOperations?.delete(requestId);
+          }
+
+          break;
+        }
+
         case 'setProvider': {
           const nextProvider = message.provider;
           try {
@@ -908,7 +955,8 @@ wss.on('connection', (ws) => {
               const history = memoryStore.listMessages(ws.sessionId) || [];
               messenger.history(history.map((row) => ({
                 role: row.role,
-                content: row.content
+                content: row.content,
+                meta: row.meta
               })));
             } catch (err) {
               messenger.error('Failed to load history');
@@ -938,7 +986,7 @@ wss.on('connection', (ws) => {
  * Handle chat message
  * Refactored to use providers and messaging subsystems
  */
-async function handleChat(ws, message, configState, messenger) {
+async function handleChat(ws, message, configState, messenger, meta = null) {
   const provider = configState.provider;
   if (!provider) {
     messenger.error('No provider selected');
@@ -958,7 +1006,9 @@ async function handleChat(ws, message, configState, messenger) {
 
   if (memoryStore) {
     const history = memoryStore.listMessages(ws.sessionId) || [];
-    baseMessages = history.map((row) => ({ role: row.role, content: row.content }));
+    baseMessages = history
+      .filter((row) => !row.meta?.hidden)
+      .map((row) => ({ role: row.role, content: row.content }));
     if (inboundUserContent) {
       const last = baseMessages[baseMessages.length - 1];
       if (!last || last.role !== 'user' || last.content !== inboundUserContent) {
@@ -991,6 +1041,7 @@ async function handleChat(ws, message, configState, messenger) {
         provider,
         role: 'user',
         text: userText,
+        meta,
         onState: sendState
       }).catch(() => {});
     });

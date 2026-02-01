@@ -20,6 +20,7 @@ export function installHistoryHandlers() {
 
     const normalizedMessages = data.messages
       .filter(msg => msg.role !== 'system')  // Hide system messages from UI
+      .filter(msg => !msg.meta?.hidden)  // Hide messages marked as hidden
       .map(msg => {
         if (msg.role === 'tool') {
           try {

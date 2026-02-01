@@ -94,6 +94,36 @@ Both `RemoveFile` and `RemoveDir` support a `deletionKind` parameter:
 - `"system_trash"` (default) - Moves to system trash/recycle bin
 - `"permanently"` - Permanently deletes
 
+## File Operation Authorization
+
+For security, file operations outside the base workspace require user authorization.
+
+### Authorization Flow
+
+1. **Check Authorization**: Use `CheckAuthorization` to verify if access is granted
+2. **Request Authorization**: Use `RequestAuthorization` with a clear reason
+3. **Wait for Approval**: User sees a dialog and approves/denies
+4. **Proceed**: Once approved, file tools work on that directory
+
+### Authorization Tools
+
+| Tool | Purpose |
+|------|---------|
+| `CheckAuthorization` | Check if a tool is authorized for a directory |
+| `RequestAuthorization` | Request user approval for directory access |
+| `ListAuthorizations` | List all stored authorizations |
+
+### Authorization Storage
+
+Authorizations are stored in `memory.db` with:
+- Tool name
+- Target directory
+- Reason for authorization
+- Authorized status (true/false)
+- Timestamps
+
+Ancestor inheritance: If `/home/user` is authorized, `/home/user/projects` is also authorized.
+
 ## Key Subsystems
 
 | Directory | Purpose |

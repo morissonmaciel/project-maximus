@@ -28,6 +28,7 @@
 /* Dialog Components */
 @import './dialogs/ProviderSelector.css';
 @import './dialogs/SettingsModal.css';
+@import './dialogs/AuthDialog.css';
 
 /* Settings Panel Components */
 @import './dialogs/settings/panels/AnthropicPanel.css';

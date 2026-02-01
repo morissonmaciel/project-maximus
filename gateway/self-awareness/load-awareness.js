@@ -47,6 +47,9 @@ export function loadAwareness() {
         'CreateCronJob (input: { reason, schedule, name?, timezone?, payload?, enabled?, max_retries?, retry_backoff_ms? } - creates a scheduled job), ' +
         'ListCronJobs (returns all cron jobs), ' +
         'DisableCronJob (input: { reason, jobId } - disables a scheduled job), ' +
+        'RequestAuthorization (input: { reason, tool, targetDir, requestId? } - requests user authorization for a directory), ' +
+        'CheckAuthorization (input: { tool, targetDir } - checks if authorization exists), ' +
+        'ListAuthorizations (input: { tool?, authorized? } - lists stored authorizations), ' +
         'GetWorkingDir (returns current working directory as full path), ' +
         'GetRootMaximusDir (returns gateway root path), ' +
         'GetCurrentTime (returns current UTC and local server time), ' +
@@ -68,8 +71,29 @@ export function loadAwareness() {
         'SetOnboardingComplete (input: { reason, summary, preferences? } - marks onboarding complete and stores summary in memory). ' +
         'All file and directory tools require FULL EXPANDED ABSOLUTE PATHS within $HOME (~/ is allowed and expanded). ' +
         'Use GetWorkingDir or GetRootMaximusDir to build valid paths. ' +
+        'File and directory operations require authorization checks outside previously authorized directories. ' +
         'File tools automatically ingest content/results into memory with source: "file". ' +
         'Tool names are normalized to PascalCase for execution while preserving provider-specific naming in conversation context.'
+    },
+    {
+      title: 'File Operation Authorization',
+      text:
+        'File and directory operations outside the immediate workspace require user authorization. ' +
+        'Before using file tools (ReadFile, CreateDir, RemoveFile, etc.) on a directory, you MUST: ' +
+        '1. Call CheckAuthorization to see if access is already granted. ' +
+        '2. If not authorized, call RequestAuthorization with a clear reason explaining why you need access. ' +
+        '3. Wait for user approval via the dialog that appears in their UI. ' +
+        '4. Once approved, the system will automatically send you an [AUTHORIZATION EVENT] message asking you to retry. ' +
+        '5. When you receive [AUTHORIZATION EVENT], immediately retry your previous file operation. ' +
+        'Authorizations are stored persistently in memory.db and apply to ancestor directories (if /home/user is authorized, /home/user/projects is too).'
+    },
+    {
+      title: 'Authorization Auto-Retry Mechanism',
+      text:
+        'When you request authorization and the user approves, the gateway automatically injects a synthetic user message ' +
+        'formatted as [AUTHORIZATION EVENT] ... [/AUTHORIZATION EVENT]. This message instructs you to retry your previous file operation. ' +
+        'You should treat this as a direct instruction from the user to retry. Immediately call the same file tool again with the same parameters. ' +
+        'The second attempt will succeed because authorization has been granted. Do not ask the user for confirmation before retrying.'
     },
     {
       title: 'File Path Requirements',

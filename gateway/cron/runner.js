@@ -105,7 +105,8 @@ export async function runCronJob({ job, db, memoryStore, configState, onNotify, 
       role: 'system',
       text: eventMessage,
       source: 'system',
-      path
+      path,
+      meta: { hidden: true, source: 'cron', jobName: friendlyName }
     });
   }
 

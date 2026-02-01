@@ -79,6 +79,16 @@ export class ClientMessenger {
     this.send(MessageTypes.TOOL_RESULT, { toolCallId, result, success });
   }
 
+  // Authorization
+  authRequest(requestId, tool, targetDir, reason) {
+    console.log('[Messenger] Sending authRequest:', { requestId, tool, targetDir, reason });
+    this.send(MessageTypes.AUTH_REQUEST, { requestId, tool, targetDir, reason });
+  }
+
+  authResponse(requestId, authorized, reason) {
+    this.send(MessageTypes.AUTH_RESPONSE, { requestId, authorized, reason });
+  }
+
   // Auth
   apiKeySet(success, provider) {
     this.send(MessageTypes.API_KEY_SET, { success, provider });

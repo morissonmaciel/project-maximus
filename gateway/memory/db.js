@@ -115,11 +115,62 @@ function ensureMemoryIndexSchema(params) {
       session_id TEXT NOT NULL,
       role TEXT NOT NULL,
       content TEXT NOT NULL,
+      meta TEXT,
       created_at INTEGER NOT NULL
     );
   `);
   params.db.exec('CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);');
 
+  // Migration: Add meta column if it doesn't exist (for existing databases)
+  ensureColumn(params.db, 'messages', 'meta', 'TEXT');
+
+  // Migration: Mark existing cron and authorization messages as hidden
+  const migrateHiddenMessages = () => {
+    try {
+      // Mark cron messages as hidden (messages containing '[CRON EVENT]')
+      const cronResult = params.db.prepare(`
+        UPDATE messages
+        SET meta = json_object('hidden', true, 'source', 'cron', 'migrated', true)
+        WHERE content LIKE '%[CRON EVENT]%'
+          AND (meta IS NULL OR json_extract(meta, '$.hidden') IS NULL);
+      `).run();
+
+      // Mark authorization messages as hidden
+      const authResult = params.db.prepare(`
+        UPDATE messages
+        SET meta = json_object('hidden', true, 'source', 'authorization', 'migrated', true)
+        WHERE content LIKE '%[AUTHORIZATION EVENT]%'
+          AND (meta IS NULL OR json_extract(meta, '$.hidden') IS NULL);
+      `).run();
+
+      const total = (cronResult.changes || 0) + (authResult.changes || 0);
+      if (total > 0) {
+        console.log(`[DB Migration] Marked ${total} messages as hidden (${cronResult.changes || 0} cron, ${authResult.changes || 0} auth)`);
+      }
+    } catch (err) {
+      // Migration is best-effort, don't fail on SQLite JSON issues
+      console.warn('[DB Migration] Hidden message migration skipped:', err.message);
+    }
+  };
+
+  // Run migration after schema is set up
+  migrateHiddenMessages();
+
+  params.db.exec(`
+    CREATE TABLE IF NOT EXISTS permissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tool TEXT NOT NULL,
+      target_dir TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      authorized BOOLEAN NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(tool, target_dir)
+    );
+  `);
+  params.db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_permissions_tool_dir ON permissions(tool, target_dir);'
+  );
 
   return { ftsAvailable, ...(ftsError ? { ftsError } : {}) };
 }
@@ -164,11 +215,12 @@ export function createDatabase(options = {}) {
     stmt.run(sessionId, provider, Date.now());
   };
 
-  const insertMessage = (sessionId, role, content) => {
+  const insertMessage = (sessionId, role, content, meta = null) => {
     const stmt = db.prepare(
-      'INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?);'
+      'INSERT INTO messages (id, session_id, role, content, meta, created_at) VALUES (?, ?, ?, ?, ?, ?);'
     );
-    stmt.run(crypto.randomUUID(), sessionId, role, content, Date.now());
+    const metaJson = meta ? JSON.stringify(meta) : null;
+    stmt.run(crypto.randomUUID(), sessionId, role, content, metaJson, Date.now());
   };
   
   const upsertFileRow = (pathValue, source, content, hash) => {
@@ -231,9 +283,15 @@ export function createDatabase(options = {}) {
 
   const listMessages = (sessionId) => {
     const stmt = db.prepare(
-      'SELECT role, content, created_at FROM messages WHERE session_id = ? ORDER BY created_at ASC;'
+      'SELECT role, content, meta, created_at FROM messages WHERE session_id = ? ORDER BY created_at ASC;'
     );
-    return stmt.all(sessionId);
+    const rows = stmt.all(sessionId);
+    return rows.map(row => ({
+      role: row.role,
+      content: row.content,
+      meta: row.meta ? JSON.parse(row.meta) : null,
+      created_at: row.created_at
+    }));
   };
 
   const trimMessages = (sessionId, keepLast) => {
@@ -267,6 +325,100 @@ export function createDatabase(options = {}) {
     return { deleted: result.changes, kept: keepIds.length };
   };
 
+  const getPermission = (tool, targetDir) => {
+    const stmt = db.prepare(
+      'SELECT * FROM permissions WHERE tool = ? AND target_dir = ?;'
+    );
+    return stmt.get(tool, targetDir) || null;
+  };
+
+  const setPermission = (tool, targetDir, { authorized, reason }) => {
+    const now = Date.now();
+    const stmt = db.prepare(
+      `INSERT INTO permissions (tool, target_dir, reason, authorized, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(tool, target_dir) DO UPDATE SET
+         reason = excluded.reason,
+         authorized = excluded.authorized,
+         updated_at = excluded.updated_at;`
+    );
+
+    try {
+      stmt.run(tool, targetDir, reason, authorized ? 1 : 0, now, now);
+      return { success: true };
+    } catch (err) {
+      console.error('[Permissions] Failed to set permission:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const listPermissions = (filters = {}) => {
+    let query = 'SELECT * FROM permissions WHERE 1=1';
+    const params = [];
+
+    if (filters.tool) {
+      query += ' AND tool = ?';
+      params.push(filters.tool);
+    }
+
+    if (filters.authorized !== undefined) {
+      query += ' AND authorized = ?';
+      params.push(filters.authorized ? 1 : 0);
+    }
+
+    query += ' ORDER BY updated_at DESC';
+
+    const stmt = db.prepare(query);
+    return stmt.all(...params);
+  };
+
+  const checkPermission = (tool, targetPath) => {
+    const normalized = path.resolve(targetPath);
+    const targetDir = targetPath.endsWith(path.sep)
+      ? normalized
+      : path.dirname(normalized);
+
+    const exact = getPermission(tool, targetDir);
+    if (exact && exact.authorized) {
+      return { authorized: true, record: exact, viaAncestor: null };
+    }
+
+    if (exact && !exact.authorized) {
+      return { authorized: false, record: exact, viaAncestor: null };
+    }
+
+    const parts = targetDir.split(path.sep).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const ancestorPath = path.sep + parts.slice(0, i).join(path.sep);
+      if (!ancestorPath || ancestorPath === path.sep) continue;
+
+      const ancestor = getPermission(tool, ancestorPath);
+      if (ancestor) {
+        return {
+          authorized: ancestor.authorized,
+          record: ancestor,
+          viaAncestor: ancestorPath
+        };
+      }
+    }
+
+    return { authorized: false, record: null, viaAncestor: null };
+  };
+
+  const removePermission = (tool, targetDir) => {
+    const stmt = db.prepare(
+      'DELETE FROM permissions WHERE tool = ? AND target_dir = ?;'
+    );
+
+    try {
+      const result = stmt.run(tool, targetDir);
+      return { success: true, deleted: result.changes > 0 };
+    } catch (err) {
+      console.error('[Permissions] Failed to remove permission:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const getOnboardingSummary = (sessionId) => {
     // Query chunks table for onboarding summary content
     // Path pattern: docs:onboarding/summary
@@ -280,5 +432,24 @@ export function createDatabase(options = {}) {
     return row?.text || null;
   };
 
-  return { db, schemaInfo, ftsTable, getMeta, setMeta, insertSession, insertMessage, upsertFileRow, insertChunk, removeByPath, listMessages, trimMessages, getOnboardingSummary };
+  return {
+    db,
+    schemaInfo,
+    ftsTable,
+    getMeta,
+    setMeta,
+    insertSession,
+    insertMessage,
+    upsertFileRow,
+    insertChunk,
+    removeByPath,
+    listMessages,
+    trimMessages,
+    getPermission,
+    setPermission,
+    listPermissions,
+    checkPermission,
+    removePermission,
+    getOnboardingSummary
+  };
 }

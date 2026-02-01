@@ -8,11 +8,11 @@ export async function ingestText({
   ftsTable,
   ftsAvailable
 }) {
-  const { sessionId, provider, role, text } = params;
+  const { sessionId, provider, role, text, meta } = params;
   if (!text || !sessionId) return;
-  
+
   db.insertSession(sessionId, provider);
-  db.insertMessage(sessionId, role, text);
+  db.insertMessage(sessionId, role, text, meta);
 
   const source = params.source || 'chat';
   const pathValue = params.path || `${source}:${sessionId}`;

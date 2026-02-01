@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import { dirname, resolve, sep } from 'path';
+import { isWithinHome } from '../permission/index.js';
 
 /**
  * 🔧 CORE TOOL: list_configuration
@@ -118,6 +119,46 @@ export const CORE_TOOL_DEFINITIONS = [
         jobId: { type: 'string', description: 'Cron job ID to disable' }
       },
       required: ['reason', 'jobId'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'RequestAuthorization',
+    description: 'Request user authorization for file or directory operations on a target directory.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Human-readable explanation of why authorization is needed' },
+        tool: { type: 'string', description: 'Tool name (e.g., ReadFile, CreateDir)' },
+        targetDir: { type: 'string', description: 'Absolute directory path to authorize' },
+        requestId: { type: 'string', description: 'Optional request ID to correlate with a pending operation' }
+      },
+      required: ['reason', 'tool', 'targetDir'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'CheckAuthorization',
+    description: 'Check if a tool is authorized for a target directory.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string', description: 'Tool name to check' },
+        targetDir: { type: 'string', description: 'Absolute directory path to check' }
+      },
+      required: ['tool', 'targetDir'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'ListAuthorizations',
+    description: 'List all stored authorizations (permissions).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string', description: 'Optional tool filter' },
+        authorized: { type: 'boolean', description: 'Optional authorized filter' }
+      },
       additionalProperties: false
     }
   },
@@ -344,6 +385,55 @@ export const CORE_OLLAMA_TOOL_DEFINITIONS = [
   {
     type: 'function',
     function: {
+      name: 'RequestAuthorization',
+      description: 'Request user authorization for file or directory operations on a target directory.',
+      parameters: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', description: 'Human-readable explanation of why authorization is needed' },
+          tool: { type: 'string', description: 'Tool name (e.g., ReadFile, CreateDir)' },
+          targetDir: { type: 'string', description: 'Absolute directory path to authorize' },
+          requestId: { type: 'string', description: 'Optional request ID to correlate with a pending operation' }
+        },
+        required: ['reason', 'tool', 'targetDir'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'CheckAuthorization',
+      description: 'Check if a tool is authorized for a target directory.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tool: { type: 'string', description: 'Tool name to check' },
+          targetDir: { type: 'string', description: 'Absolute directory path to check' }
+        },
+        required: ['tool', 'targetDir'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'ListAuthorizations',
+      description: 'List all stored authorizations (permissions).',
+      parameters: {
+        type: 'object',
+        properties: {
+          tool: { type: 'string', description: 'Optional tool filter' },
+          authorized: { type: 'boolean', description: 'Optional authorized filter' }
+        },
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'GetWorkingDir',
       description: 'Return the current working directory as a full expanded absolute path. Use this to construct valid file paths for other file tools.',
       parameters: {
@@ -479,9 +569,10 @@ export async function compactConversationTool(input, context) {
   }
 
   try {
-    // Get recent messages from memory
+    // Get recent messages from memory (excluding hidden messages)
     const allMessages = memoryStore.listMessages(sessionId) || [];
-    const recentMessages = allMessages.slice(-contextWindow);
+    const visibleMessages = allMessages.filter((row) => !row.meta?.hidden);
+    const recentMessages = visibleMessages.slice(-contextWindow);
 
     if (recentMessages.length === 0) {
       return { error: 'No messages to compact', success: false };
@@ -757,6 +848,134 @@ export async function disableCronJobTool(input, context) {
   const updated = cronStore.disableJob(jobId);
   if (!updated) return { error: 'Job not found', success: false };
   return { success: true, jobId };
+}
+
+export async function requestAuthorizationTool(input, context) {
+  const { reason, tool, targetDir } = input || {};
+  const { memoryStore, permissionGuard, messenger, sessionId, provider } = context || {};
+
+  console.log('[RequestAuthorization] Called with:', { reason, tool, targetDir });
+
+  if (!reason) return { success: false, error: 'reason is required' };
+  if (!tool) return { success: false, error: 'tool is required' };
+  if (!targetDir) return { success: false, error: 'targetDir is required' };
+  if (!memoryStore) return { success: false, error: 'Memory store not available' };
+  if (!permissionGuard) return { success: false, error: 'Permission guard not available' };
+  if (!messenger) return { success: false, error: 'Messenger not available' };
+
+  if (!isWithinHome(targetDir)) {
+    return {
+      success: false,
+      error: 'Target directory must be within HOME directory'
+    };
+  }
+
+  let requestId = input?.requestId;
+  if (!requestId) {
+    requestId = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  if (!permissionGuard.getPendingOperation(requestId)) {
+    permissionGuard.storePendingOperation(requestId, {
+      sessionId,
+      toolName: tool,
+      targetDir,
+      originalReason: reason,
+      provider
+    });
+  }
+
+  global.__pendingAuthResolvers = global.__pendingAuthResolvers || new Map();
+
+  const waitForResponse = () => new Promise((resolvePromise, rejectPromise) => {
+    const timeoutId = setTimeout(() => {
+      global.__pendingAuthResolvers?.delete(requestId);
+      rejectPromise(new Error('Authorization request timed out'));
+    }, 30000);
+
+    global.__pendingAuthResolvers.set(requestId, {
+      resolve: (payload) => {
+        clearTimeout(timeoutId);
+        resolvePromise(payload);
+      },
+      reject: (err) => {
+        clearTimeout(timeoutId);
+        rejectPromise(err);
+      }
+    });
+  });
+
+  // Send the auth request
+  console.log('[RequestAuthorization] Sending auth request via messenger:', {
+    requestId,
+    tool,
+    targetDir,
+    reason
+  });
+
+  messenger.authRequest(requestId, tool, targetDir, reason);
+
+  console.log('[RequestAuthorization] Waiting for user response...');
+
+  try {
+    const response = await waitForResponse();
+    const authorized = !!response?.authorized;
+    const responseReason = response?.reason || reason;
+
+    memoryStore.setPermission(tool, targetDir, {
+      authorized,
+      reason: responseReason
+    });
+
+    return {
+      success: true,
+      authorized,
+      reason: responseReason,
+      tool,
+      targetDir,
+      requestId
+    };
+  } catch (err) {
+    permissionGuard.clearPendingOperation(requestId);
+    return { success: false, error: err.message || 'Authorization request failed' };
+  }
+}
+
+export async function checkAuthorizationTool(input, context) {
+  const { tool, targetDir } = input || {};
+  const { memoryStore } = context || {};
+
+  if (!tool) return { success: false, error: 'tool is required' };
+  if (!targetDir) return { success: false, error: 'targetDir is required' };
+  if (!memoryStore) return { success: false, error: 'Memory store not available' };
+
+  if (!isWithinHome(targetDir)) {
+    return {
+      success: true,
+      authorized: false,
+      reason: 'Target directory must be within HOME directory'
+    };
+  }
+
+  const check = memoryStore.checkPermission(tool, `${targetDir}${sep}`);
+  return {
+    success: true,
+    authorized: !!check.authorized,
+    record: check.record || null,
+    viaAncestor: check.viaAncestor || null
+  };
+}
+
+export async function listAuthorizationsTool(input, context) {
+  const { tool, authorized } = input || {};
+  const { memoryStore } = context || {};
+  if (!memoryStore) return { success: false, error: 'Memory store not available' };
+
+  const filters = {};
+  if (tool) filters.tool = tool;
+  if (authorized !== undefined) filters.authorized = authorized;
+
+  return { success: true, permissions: memoryStore.listPermissions(filters) };
 }
 
 export async function getWorkingDirTool() {
