@@ -1,5 +1,6 @@
 import Bunnix from '@bunnix/core';
 import { isConnected, provider, providerReady, latency, currentModel, connectionStore } from '../../state/connection.js';
+import { openModelSelector } from '../../state/models.js';
 import './StatusBar.css';
 
 const { div, span } = Bunnix;
@@ -27,9 +28,12 @@ export function StatusBar() {
       span({ class: 'stat-label' }, 'Provider:'),
       span({ class: 'stat-value stat-value-highlight' }, prov)
     ),
-    div({ class: 'stat' },
+    div({
+      class: 'stat stat-clickable',
+      click: () => openModelSelector(provider.get(), currentModel.get())
+    },
       span({ class: 'stat-label' }, 'Model:'),
-      span({ class: 'stat-value' }, model)
+      span({ class: 'stat-value stat-value-highlight' }, model)
     ),
     div({ class: 'stat' },
       span({ class: 'stat-label' }, 'Latency:'),
