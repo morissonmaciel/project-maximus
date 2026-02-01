@@ -243,6 +243,19 @@ export const CORE_TOOL_DEFINITIONS = [
       required: ['reason', 'skillId'],
       additionalProperties: false
     }
+  },
+  {
+    name: 'ShowNotification',
+    description: 'Show a notification to the user with a title and message. Displays a dialog in the web UI and optionally triggers an OS-level notification if the user has granted permission.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'The notification title' },
+        message: { type: 'string', description: 'The notification message body' }
+      },
+      required: ['title', 'message'],
+      additionalProperties: false
+    }
   }
 ];
 
@@ -530,6 +543,22 @@ export const CORE_OLLAMA_TOOL_DEFINITIONS = [
           skillId: { type: 'string', description: 'Skill ID to delete' }
         },
         required: ['reason', 'skillId'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'ShowNotification',
+      description: 'Show a notification to the user with a title and message',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'The notification title' },
+          message: { type: 'string', description: 'The notification message body' }
+        },
+        required: ['title', 'message'],
         additionalProperties: false
       }
     }
@@ -1118,5 +1147,61 @@ export async function unlearnSkillTool(input, context) {
     success: true,
     skillId,
     message: `Skill "${skillId}" has been unlearned and removed.`
+  };
+}
+
+/**
+ * Show a notification to the user
+ * @param {Object} input - Tool input
+ * @param {string} input.title - Notification title
+ * @param {string} input.message - Notification message body
+ * @param {Object} context - Tool context
+ * @param {Object} context.messenger - ClientMessenger instance
+ * @param {string} context.sessionId - Current session ID
+ * @param {Object} context.memoryStore - Memory store for ingestion
+ * @returns {Promise<Object>} Tool result
+ */
+export async function showNotificationTool(input, context) {
+  const { title, message } = input || {};
+  const { messenger, sessionId, memoryStore } = context || {};
+
+  if (!title) return { success: false, error: 'title is required' };
+  if (!message) return { success: false, error: 'message is required' };
+  if (!messenger) return { success: false, error: 'Messenger not available' };
+
+  const notificationId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Send notification to client
+  messenger.notification(title, message, notificationId);
+
+  // Ingest into memory for self-awareness
+  if (memoryStore && sessionId) {
+    try {
+      const notificationContent = `[NOTIFICATION SHOWN]\nTitle: ${title}\nMessage: ${message}\n[/NOTIFICATION]`;
+      await memoryStore.ingestText({
+        sessionId,
+        provider: 'notification',
+        role: 'assistant',
+        text: notificationContent,
+        meta: {
+          hidden: true,
+          source: 'notification',
+          notificationId,
+          notificationTitle: title,
+          notificationMessage: message
+        }
+      });
+    } catch (err) {
+      // Log but don't fail the notification if ingestion fails
+      console.warn('[ShowNotification] Failed to ingest to memory:', err.message);
+    }
+  }
+
+  return {
+    success: true,
+    notificationId,
+    title,
+    message,
+    note: 'Notification displayed to user'
   };
 }

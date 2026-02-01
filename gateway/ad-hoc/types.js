@@ -15,6 +15,7 @@ export const MessageTypes = {
   API_KEY_SET: 'apiKeySet',
   OAUTH_URL: 'oauthUrl',
   API_KEY_STATUS: 'apiKeyStatus',
+  CREDENTIALS_CLEARED: 'credentialsCleared',
 
   // Chat & Streaming
   CHAT: 'chat',
@@ -30,6 +31,10 @@ export const MessageTypes = {
   // Authorization
   AUTH_REQUEST: 'authRequest',
   AUTH_RESPONSE: 'authResponse',
+
+  // Notifications
+  NOTIFICATION: 'notification',
+  NOTIFICATION_DISMISSED: 'notificationDismissed',
 
   // Configuration
   SETTINGS: 'settings',

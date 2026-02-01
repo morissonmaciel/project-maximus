@@ -5,18 +5,31 @@ import './OpenAICodexPanel.css';
 const { div, h4, p, button, input, span, ol, li } = Bunnix;
 
 export function OpenAICodexPanel({ settings: codexSettings }) {
-  const state = settingsStore.state.get();
+  const state = settingsStore.state;
   const codexData = codexSettings?.providers?.['openai-codex'] || {};
   const usage = codexData.usage;
   const limits = codexData.limits || {};
+
+  const isConfigured = () => {
+    const s = state.get();
+    return s.settings?.providers?.['openai-codex']?.configured || false;
+  };
 
   const startCodexOAuth = () => {
     settingsStore.setStartingOAuth({ value: true });
     send({ type: 'startOAuthFlow', provider: 'openai-codex' });
   };
 
+  const changeOAuth = () => {
+    send({ type: 'clearOAuthCredentials', provider: 'openai-codex' });
+    settingsStore.setCodexOAuthStep({ step: 1 });
+    settingsStore.setCodexOAuthUrl({ url: null });
+    settingsStore.setCodexOAuthCode({ code: '' });
+  };
+
   const completeCodexOAuth = () => {
-    const input = state.codexOauthCode?.trim();
+    const s = state.get();
+    const input = s.codexOauthCode?.trim();
     if (!input) return;
 
     let code = input;
@@ -42,22 +55,49 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
     send({ type: 'completeOAuthFlow', code, state: codeState });
   };
 
+  // Create observables for step display
+  const codexOauthStep = state.map(s => s.codexOauthStep);
+
   return div({ class: 'settings-panel' },
     div({ class: 'settings-section' },
       h4('Authentication'),
       p('Authenticate with your OpenAI Codex account via OAuth.'),
 
-      Show(settingsStore.state.map(s => s.codexOauthStep === 1), () =>
-        div({ class: 'modal-actions' },
+      // Step 1: Start OAuth button (or show configured state)
+      Show(codexOauthStep.map(step => step === 1), () => {
+        const s = state.get();
+        const configured = s.settings?.providers?.['openai-codex']?.configured;
+
+        // If configured, show the "already authorized" view
+        if (configured) {
+          return div(null,
+            div({ class: 'oauth-status configured' },
+              span({ class: 'status-badge configured' }, '✓'),
+              'Configured'
+            ),
+            p('Your OpenAI Codex account is authenticated.'),
+            div({ class: 'modal-actions' },
+              button({
+                class: 'modal-btn oauth',
+                click: changeOAuth
+              }, 'CHANGE_OAUTH')
+            )
+          );
+        }
+
+        // Otherwise show the start button
+        return div({ class: 'modal-actions' },
           button({
             class: 'modal-btn oauth',
             click: startCodexOAuth
-          }, state.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
-        )
-      ),
+          }, s.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
+        );
+      }),
 
-      Show(settingsStore.state.map(s => s.codexOauthStep === 2), () =>
-        div(null,
+      // Step 2: Complete OAuth
+      Show(codexOauthStep.map(step => step === 2), () => {
+        const s = state.get();
+        return div(null,
           ol({ class: 'oauth-steps' },
             li('Click the link below to open the authorization page.'),
             li('Log in and authorize the application.'),
@@ -65,16 +105,16 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
             li('Copy the full URL or just the code and state (format: code#state).'),
             li('Paste it below and click Complete.')
           ),
-          div({ class: 'oauth-url-box' }, state.codexOauthUrl || 'Generating URL...'),
+          div({ class: 'oauth-url-box' }, s.codexOauthUrl || 'Generating URL...'),
           button({
             class: 'modal-btn',
             style: 'margin-bottom: 12px; width: 100%;',
-            click: () => { if (state.codexOauthUrl) window.open(state.codexOauthUrl, '_blank'); }
+            click: () => { if (s.codexOauthUrl) window.open(s.codexOauthUrl, '_blank'); }
           }, 'OPEN_AUTH_URL'),
           input({
             type: 'text',
             placeholder: 'Paste code#state or full URL here...',
-            value: state.codexOauthCode,
+            value: s.codexOauthCode,
             input: (e) => settingsStore.setCodexOAuthCode({ code: e.target.value }),
             keydown: (e) => { if (e.key === 'Enter') completeCodexOAuth(); }
           }),
@@ -89,10 +129,10 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
             button({
               class: 'modal-btn save',
               click: completeCodexOAuth
-            }, state.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
+            }, s.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
           )
-        )
-      )
+        );
+      })
     ),
 
     div({ class: 'settings-section' },

@@ -7,7 +7,7 @@ import './AnthropicPanel.css';
 const { div, h4, p, button, input, span, ol, li } = Bunnix;
 
 export function AnthropicPanel({ settings: anthropicSettings }) {
-  const state = settingsStore.state.get();
+  const state = settingsStore.state;
   const anthropicData = anthropicSettings?.providers?.anthropic || {};
   const usage = anthropicData.usage;
   const limits = anthropicData.limits || {};
@@ -18,7 +18,8 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
     : null;
 
   const saveApiKey = () => {
-    const apiKey = state.apiKey?.trim();
+    const s = state.get();
+    const apiKey = s.apiKey?.trim();
     if (!apiKey || !apiKey.startsWith('sk-ant-api')) return;
     settingsStore.setSaving({ value: true });
     send({ type: 'setApiKey', apiKey });
@@ -30,7 +31,8 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
   };
 
   const completeOAuth = () => {
-    const codeState = state.oauthCode?.trim();
+    const s = state.get();
+    const codeState = s.oauthCode?.trim();
     if (!codeState) return;
     const parts = codeState.split('#');
     if (parts.length !== 2) return;
@@ -39,6 +41,7 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
   };
 
   const tab = authTab.map(t => t);
+  const oauthStep = state.map(s => s.oauthStep);
 
   return div({ class: 'settings-panel' },
     div({ class: 'auth-tabs' },
@@ -52,14 +55,15 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
       }, '[OAUTH]')
     ),
 
-    Show(authTab.map(t => t === 'apikey'), () =>
-      div({ class: "settings-section" },
+    Show(authTab.map(t => t === 'apikey'), () => {
+      const s = state.get();
+      return div({ class: "settings-section" },
         div({ class: 'auth-panel active' },
           p('Enter your Anthropic API key (sk-ant-api...).'),
           input({
             type: 'password',
             placeholder: 'sk-ant-api03-...',
-            value: state.apiKey,
+            value: s.apiKey,
             input: (e) => settingsStore.setApiKey({ value: e.target.value }),
             keydown: (e) => { if (e.key === 'Enter') saveApiKey(); }
           }),
@@ -67,44 +71,46 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
             button({
               class: 'modal-btn save',
               click: saveApiKey
-            }, state.isSaving ? 'SAVING...' : 'SAVE_KEY')
+            }, s.isSaving ? 'SAVING...' : 'SAVE_KEY')
           )
         )
-      )
-    ),
+      );
+    }),
 
     Show(authTab.map(t => t === 'oauth'), () =>
        div({ class: "settings-section" },
         div({ class: 'auth-panel active' },
           p('Authenticate with your Claude Pro/Max account via OAuth (token used directly).'),
 
-          Show(settingsStore.state.map(s => s.oauthStep === 1), () =>
-            div({ class: 'modal-actions' },
+          Show(oauthStep.map(step => step === 1), () => {
+            const s = state.get();
+            return div({ class: 'modal-actions' },
               button({
                 class: 'modal-btn oauth',
                 click: startOAuth
-              }, state.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
-            )
-          ),
+              }, s.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
+            );
+          }),
 
-          Show(settingsStore.state.map(s => s.oauthStep === 2), () =>
-            div(null,
+          Show(oauthStep.map(step => step === 2), () => {
+            const s = state.get();
+            return div(null,
               ol({ class: 'oauth-steps' },
                 li('Click the link below to open the authorization page'),
                 li('Log in and authorize the application'),
                 li('Copy the code from the URL (format: code#state)'),
                 li('Paste it below and click Complete')
               ),
-              div({ class: 'oauth-url-box' }, state.oauthUrl || 'Generating URL...'),
+              div({ class: 'oauth-url-box' }, s.oauthUrl || 'Generating URL...'),
               button({
                 class: 'modal-btn',
                 style: 'margin-bottom: 12px; width: 100%;',
-                click: () => { if (state.oauthUrl) window.open(state.oauthUrl, '_blank'); }
+                click: () => { if (s.oauthUrl) window.open(s.oauthUrl, '_blank'); }
               }, 'OPEN_AUTH_URL'),
               input({
                 type: 'text',
                 placeholder: 'Paste code#state here...',
-                value: state.oauthCode,
+                value: s.oauthCode,
                 input: (e) => settingsStore.setOAuthCode({ code: e.target.value }),
                 keydown: (e) => { if (e.key === 'Enter') completeOAuth(); }
               }),
@@ -119,10 +125,10 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
                 button({
                   class: 'modal-btn save',
                   click: completeOAuth
-                }, state.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
+                }, s.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
               )
-            )
-          )
+            );
+          })
         )
        )
     ),

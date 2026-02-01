@@ -675,7 +675,7 @@ wss.on('connection', (ws) => {
                verifier = result.verifier;
             }
             
-            pendingOAuth = { verifier, provider: providerToAuth };
+            pendingOAuth = { verifier, state, provider: providerToAuth };
             messenger.oauthUrl(url);
           } catch (err) {
             messenger.error(err.message);
@@ -693,7 +693,7 @@ wss.on('connection', (ws) => {
             const { code, state } = message;
             const providerToAuth = pendingOAuth.provider || 'anthropic';
             console.log(`[Gateway] Exchanging OAuth code for ${providerToAuth}...`);
-            
+
             if (providerToAuth === 'openai-codex') {
                 const tokens = await openaiCodexAuth.exchangeCodeForTokens(code, state, pendingOAuth.verifier);
                 config.updateConfig({
@@ -722,7 +722,7 @@ wss.on('connection', (ws) => {
                     config.updateProvider('anthropic');
                 }
             }
-            
+
             pendingOAuth = null;
             console.log('[Gateway] OAuth configured successfully');
             messenger.apiKeySet(true, providerToAuth);
@@ -731,6 +731,21 @@ wss.on('connection', (ws) => {
             console.error('[Gateway] OAuth failed:', err.message);
             messenger.error(err.message);
           }
+          break;
+        }
+
+        case 'clearOAuthCredentials': {
+          const providerToClear = message.provider || 'anthropic';
+          console.log(`[Gateway] Clearing OAuth credentials for ${providerToClear}...`);
+
+          if (providerToClear === 'openai-codex') {
+            config.updateConfig({ openaiCodexCredentials: null });
+          } else if (providerToClear === 'anthropic') {
+            config.updateConfig({ anthropicCredentials: null });
+          }
+
+          messenger.credentialsCleared(providerToClear);
+          sendStatus(ws);
           break;
         }
 

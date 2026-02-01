@@ -1,4 +1,4 @@
-import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, requestAuthorizationTool, checkAuthorizationTool, listAuthorizationsTool, getWorkingDirTool, getRootMaximusDirTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool } from './core-tools.js';
+import { CORE_TOOL_DEFINITIONS, CORE_OLLAMA_TOOL_DEFINITIONS, listConfigurationTool, compactConversationTool, trimChatHistoryTool, setOnboardingCompleteTool, createCronJobTool, listCronJobsTool, disableCronJobTool, requestAuthorizationTool, checkAuthorizationTool, listAuthorizationsTool, getWorkingDirTool, getRootMaximusDirTool, getCurrentTimeTool, listSkillsTool, readSkillTool, learnSkillTool, unlearnSkillTool, showNotificationTool } from './core-tools.js';
 import { ACCESSORY_TOOL_DEFINITIONS, ACCESSORY_OLLAMA_TOOL_DEFINITIONS, runCommandTool, webFetchTool, webSearchTool, readFileTool, grepTool, replaceFileTool, strReplaceFileTool, createDirTool, removeDirTool, copyDirTool, moveDirTool, copyFileTool, moveFileTool, removeFileTool } from './accessory-tools.js';
 import { normalizeToolName } from './names.js';
 import { PermissionGuard, extractTargetDir } from '../permission/index.js';
@@ -184,6 +184,9 @@ export function createToolRunner({ getConfigurationSnapshot, getSystemConfig, me
 
       case 'UnlearnSkill':
         return unlearnSkillTool(toolCall.input || {}, context);
+
+      case 'ShowNotification':
+        return showNotificationTool(toolCall.input || {}, context);
 
       default:
         return { stdout: '', stderr: `Unknown tool: ${toolCall.name}`, exit_code: 1 };

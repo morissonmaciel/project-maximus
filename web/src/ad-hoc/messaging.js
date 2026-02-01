@@ -6,7 +6,23 @@
 import { on } from '../lib/websocket.js';
 import { messagesStore } from '../state/messages.js';
 import { authStore } from '../state/auth.js';
+import { notificationStore } from '../state/notification.js';
 import { generateId } from '../utils/helpers.js';
+
+/**
+ * Show system notification if permission granted
+ * @param {string} title - Notification title
+ * @param {string} message - Notification body
+ */
+function showSystemNotification(title, message) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification(title, {
+      body: message,
+      icon: '/favicon.ico'
+    });
+  }
+}
 
 export function installMessagingHandlers() {
   on('pushMessage', (data) => {
@@ -59,5 +75,15 @@ export function installMessagingHandlers() {
     });
 
     console.log('[Messaging] Auth dialog should now be visible');
+  });
+
+  on('notification', (data) => {
+    const { title, message, notificationId } = data;
+
+    // Show dialog
+    notificationStore.addNotification({ notificationId, title, message });
+
+    // Try to show system notification
+    showSystemNotification(title, message);
   });
 }

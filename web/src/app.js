@@ -1,10 +1,23 @@
 import Bunnix from '@bunnix/core';
 import { Header } from './design-system/navigation/index.js';
 import { ChatPage } from './pages/index.js';
-import { SettingsModal, ProviderSelector, AuthDialog } from './dialogs/index.js';
+import { SettingsModal, ProviderSelector, AuthDialog, NotificationDialog } from './dialogs/index.js';
 import './styles.css';
+import './dialogs/NotificationDialog.css';
 
 const { div } = Bunnix;
+
+/**
+ * Request notification permission on first user interaction
+ */
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// Call on first click anywhere in the app
+document.addEventListener('click', requestNotificationPermission, { once: true });
 
 /**
  * Main App component
@@ -16,6 +29,7 @@ export function App() {
     ChatPage(),
     ProviderSelector(),
     SettingsModal(),
-    AuthDialog()
+    AuthDialog(),
+    NotificationDialog()
   );
 }

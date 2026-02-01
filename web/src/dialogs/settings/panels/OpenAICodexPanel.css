@@ -1,1 +1,33 @@
 @import './AnthropicPanel.css';
+
+/* OAuth Status Indicator */
+.oauth-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+}
+
+.oauth-status.configured {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  color: white;
+  font-size: 12px;
+}
+
+.status-badge.configured {
+  background: #22c55e;
+}

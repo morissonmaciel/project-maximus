@@ -77,4 +77,10 @@ export function installSettingsHandlers() {
     }
     connectionStore.closeProviderSelector();
   });
+
+  on('credentialsCleared', (data) => {
+    console.log(`[Settings] Credentials cleared for ${data.provider}`);
+    send({ type: 'getSettings' });
+    send({ type: 'getProviders' });
+  });
 }

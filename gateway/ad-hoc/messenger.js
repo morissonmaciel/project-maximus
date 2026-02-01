@@ -89,6 +89,10 @@ export class ClientMessenger {
     this.send(MessageTypes.AUTH_RESPONSE, { requestId, authorized, reason });
   }
 
+  notification(title, message, notificationId) {
+    this.send(MessageTypes.NOTIFICATION, { title, message, notificationId });
+  }
+
   // Auth
   apiKeySet(success, provider) {
     this.send(MessageTypes.API_KEY_SET, { success, provider });
@@ -100,6 +104,10 @@ export class ClientMessenger {
 
   apiKeyStatus(provider, configured) {
     this.send(MessageTypes.API_KEY_STATUS, { provider, configured });
+  }
+
+  credentialsCleared(provider) {
+    this.send(MessageTypes.CREDENTIALS_CLEARED, { provider });
   }
 
   // Config

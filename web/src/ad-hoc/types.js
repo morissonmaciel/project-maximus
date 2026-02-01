@@ -31,6 +31,10 @@ export const MessageTypes = {
   AUTH_REQUEST: 'authRequest',
   AUTH_RESPONSE: 'authResponse',
 
+  // Notifications
+  NOTIFICATION: 'notification',
+  NOTIFICATION_DISMISSED: 'notificationDismissed',
+
   // Settings
   GET_SETTINGS: 'getSettings',
   SETTINGS: 'settings',
