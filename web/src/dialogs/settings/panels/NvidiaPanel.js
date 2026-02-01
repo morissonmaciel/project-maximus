@@ -1,5 +1,6 @@
 import Bunnix from '@bunnix/core';
 import { send, settingsStore, formatValue } from '../helpers.js';
+import { connectionStore } from '../../../state/connection.js';
 import { openModelSelector } from '../../../state/models.js';
 import './NvidiaPanel.css';
 
@@ -9,6 +10,9 @@ export function NvidiaPanel({ settings: nvidiaSettings }) {
   const nvidiaData = nvidiaSettings?.providers?.nvidia || {};
   const usage = nvidiaData.usage;
   const limits = nvidiaData.limits || {};
+  const currentModelValue = connectionStore.state.get().currentModel;
+  const availableModels = nvidiaData.models || [];
+  const displayModel = currentModelValue || nvidiaData.model || availableModels[0] || 'Unknown';
 
   const nvidiaKey = settingsStore.state.map(s => s.nvidiaApiKey);
   const isSaving = settingsStore.state.map(s => s.isSaving);
@@ -35,7 +39,7 @@ export function NvidiaPanel({ settings: nvidiaSettings }) {
         button({
           class: 'modal-btn save',
           click: saveApiKey
-        }, isSaving.map(v => v ? 'SAVING...' : 'SAVE_KEY'))
+        }, isSaving.map(v => v ? 'Saving...' : 'Save Key'))
       )
     ),
 
@@ -43,22 +47,18 @@ export function NvidiaPanel({ settings: nvidiaSettings }) {
       h4('Model Selection'),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Current Model'),
-        span({ class: 'settings-value' }, formatValue(nvidiaData.model, 'Unknown'))
+        span({ class: 'settings-value' }, formatValue(displayModel, 'Unknown'))
       ),
       div({ class: 'modal-actions', style: 'margin-top: 12px;' },
         button({
           class: 'modal-btn save',
-          click: () => openModelSelector('nvidia', nvidiaData.model)
+          click: () => openModelSelector('nvidia', displayModel)
         }, 'Select Model')
       )
     ),
 
     div({ class: 'settings-section' },
       h4('Usage (Last Response)'),
-      div({ class: 'settings-row' },
-        span({ class: 'settings-label' }, 'Model'),
-        span({ class: 'settings-value' }, formatValue(nvidiaData.model, 'Unknown'))
-      ),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Max tokens'),
         span({ class: 'settings-value' }, formatValue(limits.maxTokens))

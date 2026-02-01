@@ -1,5 +1,6 @@
 import Bunnix, { Show } from '@bunnix/core';
 import { send, settingsStore, formatValue } from '../helpers.js';
+import { connectionStore } from '../../../state/connection.js';
 import { openModelSelector } from '../../../state/models.js';
 import './OpenAICodexPanel.css';
 
@@ -10,6 +11,9 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
   const codexData = codexSettings?.providers?.['openai-codex'] || {};
   const usage = codexData.usage;
   const limits = codexData.limits || {};
+  const currentModelValue = connectionStore.state.get().currentModel;
+  const availableModels = codexData.models || [];
+  const displayModel = currentModelValue || codexData.model || availableModels[0] || 'Unknown';
 
   const isConfigured = () => {
     const s = state.get();
@@ -81,7 +85,7 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
               button({
                 class: 'modal-btn oauth',
                 click: changeOAuth
-              }, 'CHANGE_OAUTH')
+              }, 'Change OAuth')
             )
           );
         }
@@ -91,7 +95,7 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
           button({
             class: 'modal-btn oauth',
             click: startCodexOAuth
-          }, s.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
+          }, s.isStartingOAuth ? 'Starting...' : 'Start OAuth')
         );
       }),
 
@@ -111,7 +115,7 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
             class: 'modal-btn',
             style: 'margin-bottom: 12px; width: 100%;',
             click: () => { if (s.codexOauthUrl) window.open(s.codexOauthUrl, '_blank'); }
-          }, 'OPEN_AUTH_URL'),
+          }, 'Open Auth URL'),
           input({
             type: 'text',
             placeholder: 'Paste code#state or full URL here...',
@@ -126,11 +130,11 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
                 settingsStore.setCodexOAuthStep({ step: 1 });
                 settingsStore.setCodexOAuthUrl({ url: null });
               }
-            }, 'BACK'),
+            }, 'Back'),
             button({
               class: 'modal-btn save',
               click: completeCodexOAuth
-            }, s.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
+            }, s.isCompletingOAuth ? 'Completing...' : 'Complete')
           )
         );
       })
@@ -140,22 +144,18 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
       h4('Model Selection'),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Current Model'),
-        span({ class: 'settings-value' }, formatValue(codexData.model, 'Unknown'))
+        span({ class: 'settings-value' }, formatValue(displayModel, 'Unknown'))
       ),
       div({ class: 'modal-actions', style: 'margin-top: 12px;' },
         button({
           class: 'modal-btn save',
-          click: () => openModelSelector('openai-codex', codexData.model)
+          click: () => openModelSelector('openai-codex', displayModel)
         }, 'Select Model')
       )
     ),
 
     div({ class: 'settings-section' },
       h4('Usage (Last Response)'),
-      div({ class: 'settings-row' },
-        span({ class: 'settings-label' }, 'Model'),
-        span({ class: 'settings-value' }, formatValue(codexData.model, 'Unknown'))
-      ),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Max tokens'),
         span({ class: 'settings-value' }, formatValue(limits.maxTokens))

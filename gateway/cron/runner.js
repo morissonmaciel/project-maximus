@@ -1,6 +1,29 @@
 import crypto from 'node:crypto';
 import { computeNextRun, parseSchedule } from './scheduler.js';
 
+function formatInTimeZone(date, timeZone) {
+  if (!timeZone) return null;
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = fmt.formatToParts(date).reduce((acc, part) => {
+      if (part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+  } catch {
+    return null;
+  }
+}
+
 function parsePayload(payload) {
   if (!payload) return {};
   if (typeof payload === 'string') {
@@ -23,16 +46,19 @@ export async function runCronJob({ job, db, memoryStore, configState, onNotify, 
   const friendlyName = job.name || 'Cron Job';
   const scheduledLabel = job.schedule || 'unspecified';
   const tzLabel = job.timezone ? ` (${job.timezone})` : '';
-  const executedAt = new Date().toISOString();
+  const executedAtDate = new Date();
+  const executedAt = executedAtDate.toISOString();
+  const executedAtLocal = formatInTimeZone(executedAtDate, job.timezone);
   const purpose = payload.message || payload.reason || `Cron job "${friendlyName}" executed.`;
   const message = [
     '[CRON EVENT]',
     `Job: ${friendlyName}`,
     `Schedule: ${scheduledLabel}${tzLabel}`,
     `ExecutedAt: ${executedAt}`,
+    executedAtLocal ? `ExecutedAtLocal: ${executedAtLocal} ${job.timezone}` : null,
     `Message: ${purpose}`,
     '[/CRON EVENT]'
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const runId = createRun({
     id: crypto.randomUUID(),
@@ -86,7 +112,15 @@ export async function runCronJob({ job, db, memoryStore, configState, onNotify, 
 
   const eventMessage = success
     ? message
-    : `[CRON EVENT]\nJob: ${friendlyName}\nSchedule: ${scheduledLabel}${tzLabel}\nExecutedAt: ${executedAt}\nMessage: Cron job failed: ${error || 'unknown error'}\n[/CRON EVENT]`;
+    : [
+        '[CRON EVENT]',
+        `Job: ${friendlyName}`,
+        `Schedule: ${scheduledLabel}${tzLabel}`,
+        `ExecutedAt: ${executedAt}`,
+        executedAtLocal ? `ExecutedAtLocal: ${executedAtLocal} ${job.timezone}` : null,
+        `Message: Cron job failed: ${error || 'unknown error'}`,
+        '[/CRON EVENT]'
+      ].filter(Boolean).join('\n');
 
   const eventId = createEvent({
     job_id: job.id,

@@ -2,6 +2,7 @@ import Bunnix, { Show } from '@bunnix/core';
 import { authTab } from '../../../state/settings.js';
 import { setAuthTab } from '../../../state/settings.js';
 import { send, settingsStore, formatValue } from '../helpers.js';
+import { connectionStore } from '../../../state/connection.js';
 import { openModelSelector } from '../../../state/models.js';
 import './AnthropicPanel.css';
 
@@ -43,17 +44,20 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
 
   const tab = authTab.map(t => t);
   const oauthStep = state.map(s => s.oauthStep);
+  const currentModelValue = connectionStore.state.get().currentModel;
+  const availableModels = anthropicData.models || [];
+  const displayModel = currentModelValue || anthropicData.model || availableModels[0] || 'Unknown';
 
   return div({ class: 'settings-panel' },
     div({ class: 'auth-tabs' },
       button({
         class: Bunnix.Compute(tab, t => `auth-tab ${t === 'apikey' ? 'active' : ''}`),
         click: () => setAuthTab('apikey')
-      }, '[API_KEY]'),
+      }, 'API Key'),
       button({
         class: Bunnix.Compute(tab, t => `auth-tab ${t === 'oauth' ? 'active' : ''}`),
         click: () => setAuthTab('oauth')
-      }, '[OAUTH]')
+      }, 'OAuth')
     ),
 
     Show(authTab.map(t => t === 'apikey'), () => {
@@ -72,7 +76,7 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
             button({
               class: 'modal-btn save',
               click: saveApiKey
-            }, s.isSaving ? 'SAVING...' : 'SAVE_KEY')
+            }, s.isSaving ? 'Saving...' : 'Save Key')
           )
         )
       );
@@ -89,7 +93,7 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
               button({
                 class: 'modal-btn oauth',
                 click: startOAuth
-              }, s.isStartingOAuth ? 'STARTING...' : 'START_OAUTH')
+              }, s.isStartingOAuth ? 'Starting...' : 'Start OAuth')
             );
           }),
 
@@ -107,7 +111,7 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
                 class: 'modal-btn',
                 style: 'margin-bottom: 12px; width: 100%;',
                 click: () => { if (s.oauthUrl) window.open(s.oauthUrl, '_blank'); }
-              }, 'OPEN_AUTH_URL'),
+              }, 'Open Auth URL'),
               input({
                 type: 'text',
                 placeholder: 'Paste code#state here...',
@@ -122,11 +126,11 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
                     settingsStore.setOAuthStep({ step: 1 });
                     settingsStore.setOAuthUrl({ url: null });
                   }
-                }, 'BACK'),
+                }, 'Back'),
                 button({
                   class: 'modal-btn save',
                   click: completeOAuth
-                }, s.isCompletingOAuth ? 'COMPLETING...' : 'COMPLETE')
+                }, s.isCompletingOAuth ? 'Completing...' : 'Complete')
               )
             );
           })
@@ -138,12 +142,12 @@ export function AnthropicPanel({ settings: anthropicSettings }) {
       h4('Model Selection'),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Current Model'),
-        span({ class: 'settings-value' }, formatValue(anthropicData.model, 'Unknown'))
+        span({ class: 'settings-value' }, formatValue(displayModel, 'Unknown'))
       ),
       div({ class: 'modal-actions', style: 'margin-top: 12px;' },
         button({
           class: 'modal-btn save',
-          click: () => openModelSelector('anthropic', anthropicData.model)
+          click: () => openModelSelector('anthropic', displayModel)
         }, 'Select Model')
       )
     ),
