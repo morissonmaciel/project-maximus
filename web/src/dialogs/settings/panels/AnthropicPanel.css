@@ -21,7 +21,7 @@
 }
 
 .settings-section p {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   margin-bottom: var(--spacing-md);
   line-height: 1.5;
@@ -71,6 +71,10 @@
 }
 
 .settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-section .settings-row:last-of-type {
   border-bottom: none;
 }
 
@@ -130,6 +134,17 @@
   border-top: 1px solid var(--border-divider);
 }
 
+/* Avoid double divider lines inside settings sections */
+.settings-section .modal-actions {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.settings-section .modal-actions.auth-actions {
+  border-top: 1px solid var(--border-divider);
+  padding-top: var(--spacing-md);
+}
+
 /* Input in settings */
 .settings-section input {
   width: 100%;
@@ -152,4 +167,36 @@
 
 .settings-section input::placeholder {
   color: var(--text-muted);
+}
+
+/* Configuration Status Indicator - Shared across all provider panels */
+.oauth-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+}
+
+.oauth-status.configured {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  color: white;
+  font-size: 12px;
+}
+
+.status-badge.configured {
+  background: #22c55e;
 }

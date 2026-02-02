@@ -17,12 +17,13 @@
  */
 
 import * as anthropic from './anthropic.js';
+import * as claudeCode from './claude-code.js';
 import * as ollama from './ollama.js';
 import * as openaiCodex from './openai-codex.js';
 import * as kimi from './kimi.js';
 import * as nvidia from './nvidia.js';
 
-export { anthropic, ollama, openaiCodex, kimi, nvidia };
+export { anthropic, claudeCode, ollama, openaiCodex, kimi, nvidia };
 
 /**
  * Get provider adapter by name
@@ -33,6 +34,8 @@ export function getProvider(name) {
   switch (name) {
     case 'anthropic':
       return anthropic;
+    case 'claude-code':
+      return claudeCode;
     case 'ollama':
       return ollama;
     case 'openai-codex':

@@ -23,22 +23,26 @@ export function createOllamaClient(host) {
 
 export function applyConfig(configState) {
   let anthropicClient = null;
+  let claudeCodeClient = null;
   let ollamaClient = null;
 
-  if (configState.anthropicCredentials) {
-    if (configState.anthropicCredentials.type === 'apiKey') {
-      anthropicClient = new Anthropic({ apiKey: configState.anthropicCredentials.apiKey });
-      console.log('[Gateway] Loaded API key from config');
-    } else if (configState.anthropicCredentials.type === 'oauth') {
-      anthropicClient = createOAuthClient(configState.anthropicCredentials.accessToken);
-      console.log('[Gateway] Loaded OAuth tokens from config');
-    }
+  // Anthropic (API Key only)
+  if (configState.anthropicCredentials?.type === 'apiKey') {
+    anthropicClient = new Anthropic({ apiKey: configState.anthropicCredentials.apiKey });
+    console.log('[Gateway] Loaded Anthropic API key from config');
+  }
+
+  // Claude Code (OAuth only)
+  if (configState.claudeCodeCredentials?.type === 'oauth') {
+    claudeCodeClient = createOAuthClient(configState.claudeCodeCredentials.accessToken);
+    console.log('[Gateway] Loaded Claude Code OAuth tokens from config');
   }
 
   ollamaClient = createOllamaClient(configState.ollamaConfig.host);
 
   return {
     anthropicClient,
+    claudeCodeClient,
     ollamaClient
   };
 }

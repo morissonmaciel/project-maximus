@@ -1,7 +1,7 @@
 import Bunnix, { Show } from '@bunnix/core';
-import { send, settingsStore, formatValue } from '../helpers.js';
-import { connectionStore } from '../../../state/connection.js';
+import { send, settingsStore, formatValue, resolveProviderModel } from '../helpers.js';
 import { openModelSelector } from '../../../state/models.js';
+import { ProgressBar } from '../../../design-system/primitives/ProgressBar.js';
 import './OpenAICodexPanel.css';
 
 const { div, h4, p, button, input, span, ol, li } = Bunnix;
@@ -9,11 +9,18 @@ const { div, h4, p, button, input, span, ol, li } = Bunnix;
 export function OpenAICodexPanel({ settings: codexSettings }) {
   const state = settingsStore.state;
   const codexData = codexSettings?.providers?.['openai-codex'] || {};
-  const usage = codexData.usage;
+  const usage = codexData.accumulatedUsage || codexData.usage;
   const limits = codexData.limits || {};
-  const currentModelValue = connectionStore.state.get().currentModel;
-  const availableModels = codexData.models || [];
-  const displayModel = currentModelValue || codexData.model || availableModels[0] || 'Unknown';
+  const daily = limits?.daily || null;
+  const weekly = limits?.weekly || null;
+  const displayModel = resolveProviderModel(codexData);
+  const formatWindow = (minutes, unit) => {
+    const value = Number(minutes);
+    if (!Number.isFinite(value)) return '--';
+    const converted = unit === 'hours' ? value / 60 : value / 1440;
+    const formatted = Number.isInteger(converted) ? converted : Number(converted.toFixed(1));
+    return `${formatted} ${unit}`;
+  };
 
   const isConfigured = () => {
     const s = state.get();
@@ -155,19 +162,91 @@ export function OpenAICodexPanel({ settings: codexSettings }) {
     ),
 
     div({ class: 'settings-section' },
-      h4('Usage (Last Response)'),
-      div({ class: 'settings-row' },
-        span({ class: 'settings-label' }, 'Max tokens'),
-        span({ class: 'settings-value' }, formatValue(limits.maxTokens))
-      ),
+      h4('Current Session Usage'),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Input tokens'),
-        span({ class: 'settings-value' }, usage ? formatValue(usage.input_tokens) : 'No usage yet')
+        span({ class: 'settings-value' }, usage ? formatValue(usage.input_tokens) : 'No usage yet — make a request to see usage')
       ),
       div({ class: 'settings-row' },
         span({ class: 'settings-label' }, 'Output tokens'),
         span({ class: 'settings-value' }, usage ? formatValue(usage.output_tokens) : '--')
-      )
+      ),
+      usage?.total_tokens !== undefined && usage?.total_tokens !== null
+        ? div({ class: 'settings-row' },
+            span({ class: 'settings-label' }, 'Total tokens'),
+            span({ class: 'settings-value' }, formatValue(usage.total_tokens))
+          )
+        : null
+    ),
+
+    div({ class: 'settings-section' },
+      h4('Limits'),
+      daily || weekly ? null : div(null,
+        limits.maxTokens
+          ? div({ class: 'settings-row' },
+              span({ class: 'settings-label' }, 'Max tokens'),
+              span({ class: 'settings-value' },
+                `${formatValue(limits.maxTokens)}${usage ? '' : ' (default)'}`
+              )
+            )
+          : p('No limits available from provider.'),
+        limits.contextWindow
+          ? div({ class: 'settings-row' },
+              span({ class: 'settings-label' }, 'Context window'),
+              span({ class: 'settings-value' },
+                `${formatValue(limits.contextWindow)}${usage ? '' : ' (default)'}`
+              )
+            )
+          : null
+      ),
+      daily ? div(null, [
+        h4({ class: 'settings-subtitle' }, 'Daily window'),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Used'),
+          daily.used_percent !== null && daily.used_percent !== undefined
+            ? div({ class: 'limits-progress-row' }, [
+                ProgressBar({
+                  progress: Number(daily.used_percent),
+                  variant: 'success',
+                  size: 'xl'
+                }),
+                span({ class: 'limits-progress-value settings-value' }, `${Math.round(daily.used_percent)}%`)
+              ])
+            : span({ class: 'settings-value' }, '--')
+        ),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Usage limit window (hours)'),
+          span({ class: 'settings-value' }, formatWindow(daily.window_minutes, 'hours'))
+        ),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Reset at'),
+          span({ class: 'settings-value' }, daily.reset_at ? new Date(daily.reset_at * 1000).toLocaleString() : '--')
+        )
+      ]) : null,
+      weekly ? div(null, [
+        h4({ class: 'settings-subtitle' }, 'Weekly window'),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Used'),
+          weekly.used_percent !== null && weekly.used_percent !== undefined
+            ? div({ class: 'limits-progress-row' }, [
+                ProgressBar({
+                  progress: Number(weekly.used_percent),
+                  variant: 'success',
+                  size: 'xl'
+                }),
+                span({ class: 'limits-progress-value settings-value' }, `${Math.round(weekly.used_percent)}%`)
+              ])
+            : span({ class: 'settings-value' }, '--')
+        ),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Usage limit window (days)'),
+          span({ class: 'settings-value' }, formatWindow(weekly.window_minutes, 'days'))
+        ),
+        div({ class: 'settings-row' },
+          span({ class: 'settings-label' }, 'Reset at'),
+          span({ class: 'settings-value' }, weekly.reset_at ? new Date(weekly.reset_at * 1000).toLocaleString() : '--')
+        )
+      ]) : null
     )
   );
 }

@@ -51,7 +51,7 @@ export async function streamCodexResponse(ws, params) {
   ws.send(JSON.stringify({ type: 'streamStart' }));
 
   try {
-    const { content, toolCalls, usage } = await providers.openaiCodex.streamChat({
+    const { content, toolCalls, usage, limits } = await providers.openaiCodex.streamChat({
       model,
       messages,
       systemPrompt: system,
@@ -68,7 +68,7 @@ export async function streamCodexResponse(ws, params) {
     ws.send(JSON.stringify({ type: 'streamEnd' }));
 
     // Return normalized format matching other providers
-    return { content, toolCalls, usage };
+    return { content, toolCalls, usage, limits };
   } catch (err) {
     ws.send(JSON.stringify({ type: 'error', message: err.message }));
     throw err;

@@ -233,9 +233,38 @@ export async function streamChat({
 
   const requestBody = buildRequestBody({ model, messages, systemPrompt, tools });
   const headers = buildHeaders({ accessToken, accountId });
+  const parseNumber = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  const buildLimitsFromHeaders = (headersObj) => {
+    const primary = {
+      used_percent: parseNumber(headersObj['x-codex-primary-used-percent']),
+      window_minutes: parseNumber(headersObj['x-codex-primary-window-minutes']),
+      reset_at: parseNumber(headersObj['x-codex-primary-reset-at']),
+      reset_after_seconds: parseNumber(headersObj['x-codex-primary-reset-after-seconds'])
+    };
+    const secondary = {
+      used_percent: parseNumber(headersObj['x-codex-secondary-used-percent']),
+      window_minutes: parseNumber(headersObj['x-codex-secondary-window-minutes']),
+      reset_at: parseNumber(headersObj['x-codex-secondary-reset-at']),
+      reset_after_seconds: parseNumber(headersObj['x-codex-secondary-reset-after-seconds'])
+    };
+
+    const hasPrimary = Object.values(primary).some(v => v !== null);
+    const hasSecondary = Object.values(secondary).some(v => v !== null);
+    if (!hasPrimary && !hasSecondary) return null;
+
+    return {
+      daily: hasPrimary ? primary : null,
+      weekly: hasSecondary ? secondary : null
+    };
+  };
 
   // Make request with retries
   let response;
+  let limits = null;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log(`[Codex] Sending request (attempt ${attempt + 1})...`);
@@ -244,6 +273,9 @@ export async function streamChat({
         headers,
         body: JSON.stringify(requestBody)
       });
+
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      limits = buildLimitsFromHeaders(responseHeaders);
 
       if (response.ok) {
         console.log('[Codex] Request successful');
@@ -273,7 +305,7 @@ export async function streamChat({
   let assistantText = "";
   let toolCallsMap = new Map();
   let currentToolId = null;
-  let usageData = { input_tokens: 0, output_tokens: 0 };
+  let usageData = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
 
   for await (const event of parseSSE(response)) {
     const type = event.type;
@@ -313,6 +345,7 @@ export async function streamChat({
       if (event.response?.usage) {
         usageData.input_tokens = event.response.usage.input_tokens || 0;
         usageData.output_tokens = event.response.usage.output_tokens || 0;
+        usageData.total_tokens = event.response.usage.total_tokens || (usageData.input_tokens + usageData.output_tokens);
       }
     } else if (type === 'error') {
       throw new Error(`Stream Error: ${event.message || event.code}`);
@@ -349,7 +382,8 @@ export async function streamChat({
     content.push(toolUse);
   }
 
-  return { content, toolCalls, usage: usageData };
+  const usage = (usageData.input_tokens || usageData.output_tokens) ? usageData : null;
+  return { content, toolCalls, usage, limits };
 }
 
 /**

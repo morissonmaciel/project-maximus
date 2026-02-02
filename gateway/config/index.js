@@ -1,8 +1,9 @@
 import { configState } from './state.js';
 import { loadConfigFromFile, saveConfig as saveConfigToFile } from './io.js';
-import { loadProvidersConfig, getProvidersConfig } from './providers-config.js';
+import { loadProvidersConfig, getProvidersConfig, getProviderModels } from './providers-config.js';
 import { normalizeConfig } from './normalize.js';
 import { applyConfig } from './apply.js';
+import { migrateAnthropicOAuthToClaudeCode, migrateCurrentModelToProviderPreferences } from './migration.js';
 import * as providerHelpers from './providers.js';
 import * as runtimeHelpers from './runtime.js';
 
@@ -11,11 +12,20 @@ export function loadConfig() {
   const normalized = normalizeConfig(rawConfig);
   Object.assign(configState, normalized);
 
+  // Run migrations if needed (only affects users upgrading from old version)
+  const oauthMigrated = migrateAnthropicOAuthToClaudeCode(configState);
+  const modelMigrated = migrateCurrentModelToProviderPreferences(configState);
+
+  if (oauthMigrated || modelMigrated) {
+    console.log('[Config] Configuration migrated successfully');
+  }
+
   // Load provider configuration
   loadProvidersConfig();
 
   const clients = applyConfig(configState);
   configState.anthropicClient = clients.anthropicClient;
+  configState.claudeCodeClient = clients.claudeCodeClient;
   configState.ollamaClient = clients.ollamaClient;
 }
 
@@ -28,6 +38,7 @@ export function updateConfig(updates) {
   
   const clients = applyConfig(configState);
   configState.anthropicClient = clients.anthropicClient;
+  configState.claudeCodeClient = clients.claudeCodeClient;
   configState.ollamaClient = clients.ollamaClient;
   
   saveConfig();
@@ -43,8 +54,10 @@ export const buildSettingsSnapshot = (runtimeState) => providerHelpers.buildSett
 export const refreshOllamaStatus = async () => runtimeHelpers.refreshOllamaStatus(configState.ollamaClient);
 export const getLastOllamaStatus = () => runtimeHelpers.getLastOllamaStatus();
 export const ensureSessionId = () => runtimeHelpers.ensureSessionId(configState, updateConfig);
-export const updateProvider = (provider) => runtimeHelpers.updateProvider(provider, updateConfig);
+export const updateProvider = (provider) => runtimeHelpers.updateProvider(provider, updateConfig, configState, getProviderModels);
 export const updateSystemConfig = (partial) => runtimeHelpers.updateSystemConfig(partial, configState, updateConfig);
+export const updateProviderModel = (providerId, model) => runtimeHelpers.updateProviderModel(providerId, model, updateConfig);
+export const getProviderPreferredModel = (providerId) => runtimeHelpers.getProviderPreferredModel(providerId, configState);
 export { getProvidersConfig, isProviderEnabled, getProviderModels, validateProviderAndModel } from './providers-config.js';
 
 

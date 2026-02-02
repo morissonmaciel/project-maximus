@@ -215,10 +215,13 @@ export async function runOpenAICodexLoop({
     }
 
     const result = await streamCodexResponse(ws, params);
-    const { content, toolCalls, usage } = result;
+    const { content, toolCalls, usage, limits } = result;
 
-    if (onStats) {
+    if (onStats && usage) {
       onStats({ usage });
+    }
+    if (onStats && limits) {
+      onStats({ limits });
     }
 
     const textParts = extractCodexText(content);

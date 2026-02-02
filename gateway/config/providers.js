@@ -1,6 +1,7 @@
 export function buildStatusSnapshot(configState, runtimeState, providersConfig = {}) {
   const { lastOllamaStatus } = runtimeState;
-  const anthropicConfigured = !!configState.anthropicClient;
+  const anthropicConfigured = !!configState.anthropicCredentials;
+  const claudeCodeConfigured = !!configState.claudeCodeCredentials;
   const ollamaReachable = lastOllamaStatus?.reachable ?? null;
   const ollamaReady = !!configState.ollamaConfig.model && ollamaReachable === true;
   const openaiCodexConfigured = !!configState.openaiCodexCredentials;
@@ -19,6 +20,8 @@ export function buildStatusSnapshot(configState, runtimeState, providersConfig =
 
   if (provider === 'anthropic') {
     providerReady = anthropicConfigured && isProviderEnabled('anthropic');
+  } else if (provider === 'claude-code') {
+    providerReady = claudeCodeConfigured && isProviderEnabled('claude-code');
   } else if (provider === 'ollama') {
     providerReady = ollamaReady && isProviderEnabled('ollama');
     if (ollamaReachable === false) {
@@ -42,6 +45,11 @@ export function buildStatusSnapshot(configState, runtimeState, providersConfig =
       configured: anthropicConfigured,
       authType: configState.anthropicCredentials?.type || null,
       enabled: isProviderEnabled('anthropic')
+    },
+    'claude-code': {
+      configured: claudeCodeConfigured,
+      authType: configState.claudeCodeCredentials?.type || null,
+      enabled: isProviderEnabled('claude-code')
     },
     ollama: {
       reachable: ollamaReachable,
@@ -70,6 +78,10 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
     lastAnthropicModel,
     lastAnthropicLimits,
     lastAnthropicRateLimits,
+    lastClaudeCodeUsage,
+    lastClaudeCodeModel,
+    lastClaudeCodeLimits,
+    lastClaudeCodeRateLimits,
     lastOpenAICodexUsage,
     lastOpenAICodexModel,
     lastOpenAICodexLimits,
@@ -112,6 +124,18 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
         },
         usage: lastAnthropicUsage
       },
+      'claude-code': {
+        configured: !!configState.claudeCodeClient,
+        authType: configState.claudeCodeCredentials?.type || null,
+        model: lastClaudeCodeModel,
+        enabled: isProviderEnabled('claude-code'),
+        models: getProviderModels('claude-code'),
+        limits: {
+          maxTokens: lastClaudeCodeLimits.maxTokens,
+          rate: lastClaudeCodeRateLimits
+        },
+        usage: lastClaudeCodeUsage
+      },
       ollama: {
         configured: !!configState.ollamaConfig.model,
         reachable: runtimeState.lastOllamaStatus?.reachable ?? null,
@@ -125,9 +149,7 @@ export function buildConfigurationSnapshot({ configState, runtimeState, gatewayS
         model: lastOpenAICodexModel,
         enabled: isProviderEnabled('openai-codex'),
         models: getProviderModels('openai-codex'),
-        limits: {
-          maxTokens: lastOpenAICodexLimits.maxTokens
-        },
+        limits: lastOpenAICodexLimits || null,
         usage: lastOpenAICodexUsage
       },
       kimi: {
@@ -167,16 +189,26 @@ export function buildSettingsSnapshot(configState, runtimeState, providersConfig
         lastAnthropicModel,
         lastAnthropicLimits,
         lastAnthropicRateLimits,
+        lastAnthropicAccumulatedUsage,
+        lastClaudeCodeUsage,
+        lastClaudeCodeModel,
+        lastClaudeCodeLimits,
+        lastClaudeCodeRateLimits,
+        lastClaudeCodeAccumulatedUsage,
         lastOpenAICodexUsage,
         lastOpenAICodexModel,
         lastOpenAICodexLimits,
+        lastOpenAICodexAccumulatedUsage,
         lastKimiUsage,
         lastKimiModel,
         lastKimiLimits,
+        lastKimiAccumulatedUsage,
         lastNvidiaUsage,
         lastNvidiaModel,
         lastNvidiaLimits,
+        lastNvidiaAccumulatedUsage,
         lastOllamaUsage,
+        lastOllamaAccumulatedUsage,
         lastOllamaStatus
     } = runtimeState;
 
@@ -196,33 +228,51 @@ export function buildSettingsSnapshot(configState, runtimeState, providersConfig
         currentModel: configState.currentModel || null,
         providers: {
           anthropic: {
-            configured: !!configState.anthropicClient,
+            configured: !!configState.anthropicCredentials,
             authType: configState.anthropicCredentials?.type || null,
             model: lastAnthropicModel,
+            preferredModel: configState.anthropicPreferredModel,
             enabled: isProviderEnabled('anthropic'),
             models: getProviderModels('anthropic'),
             usage: lastAnthropicUsage,
+            accumulatedUsage: lastAnthropicAccumulatedUsage || null,
             limits: {
               maxTokens: lastAnthropicLimits.maxTokens,
               rate: lastAnthropicRateLimits
             }
           },
-          'openai-codex': {
+          'claude-code': {
+            configured: !!configState.claudeCodeCredentials,
+            authType: configState.claudeCodeCredentials?.type || null,
+            model: lastClaudeCodeModel,
+            preferredModel: configState.claudeCodePreferredModel,
+            enabled: isProviderEnabled('claude-code'),
+            models: getProviderModels('claude-code'),
+            usage: lastClaudeCodeUsage,
+            accumulatedUsage: lastClaudeCodeAccumulatedUsage || null,
+            limits: {
+              maxTokens: lastClaudeCodeLimits.maxTokens,
+              rate: lastClaudeCodeRateLimits
+            }
+          },
+      'openai-codex': {
              configured: !!configState.openaiCodexCredentials,
              model: lastOpenAICodexModel,
+             preferredModel: configState.openaiCodexPreferredModel,
              enabled: isProviderEnabled('openai-codex'),
              models: getProviderModels('openai-codex'),
              usage: lastOpenAICodexUsage,
-             limits: {
-               maxTokens: lastOpenAICodexLimits.maxTokens
-             }
+             accumulatedUsage: lastOpenAICodexAccumulatedUsage || null,
+             limits: lastOpenAICodexLimits || null
           },
           kimi: {
              configured: !!configState.kimiCredentials,
              model: lastKimiModel,
+             preferredModel: configState.kimiPreferredModel,
              enabled: isProviderEnabled('kimi'),
              models: getProviderModels('kimi'),
              usage: lastKimiUsage,
+             accumulatedUsage: lastKimiAccumulatedUsage || null,
              limits: {
                maxTokens: lastKimiLimits.maxTokens
              }
@@ -230,9 +280,11 @@ export function buildSettingsSnapshot(configState, runtimeState, providersConfig
           nvidia: {
              configured: !!configState.nvidiaCredentials,
              model: lastNvidiaModel,
+             preferredModel: configState.nvidiaPreferredModel,
              enabled: isProviderEnabled('nvidia'),
              models: getProviderModels('nvidia'),
              usage: lastNvidiaUsage,
+             accumulatedUsage: lastNvidiaAccumulatedUsage || null,
              limits: {
                maxTokens: lastNvidiaLimits.maxTokens
              }
@@ -240,11 +292,13 @@ export function buildSettingsSnapshot(configState, runtimeState, providersConfig
           ollama: {
             host: configState.ollamaConfig.host,
             model: configState.ollamaConfig.model,
+            preferredModel: configState.ollamaConfig.model,
             reachable: lastOllamaStatus?.reachable ?? null,
             error: lastOllamaStatus?.error || null,
             models: lastOllamaStatus?.models || [],
             enabled: isProviderEnabled('ollama'),
-            usage: lastOllamaUsage
+            usage: lastOllamaUsage,
+            accumulatedUsage: lastOllamaAccumulatedUsage || null
           }
         },
         system: {

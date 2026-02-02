@@ -4,7 +4,7 @@ import { searchSimilar } from './search.js';
 
 export function createMemoryStore(options = {}) {
   const dbInstance = createDatabase(options);
-  const { db, schemaInfo, ftsTable, getMeta, setMeta, listMessages, removeByPath, trimMessages } = dbInstance;
+  const { db, schemaInfo, ftsTable, getMeta, setMeta, listMessages, removeByPath, trimMessages, insertProviderStats, getLatestProviderStats, getLatestProviderStatsAnySession } = dbInstance;
 
   return {
     db, // Expose db handle if needed
@@ -15,6 +15,9 @@ export function createMemoryStore(options = {}) {
     listMessages,
     removeByPath: (pathValue) => removeByPath(pathValue, ftsTable, schemaInfo.ftsAvailable),
     trimMessages: (sessionId, keepLast) => trimMessages(sessionId, keepLast),
+    insertProviderStats: (sessionId, provider, usage, limits, accumulatedUsage) => insertProviderStats(sessionId, provider, usage, limits, accumulatedUsage),
+    getLatestProviderStats: (sessionId, provider) => getLatestProviderStats(sessionId, provider),
+    getLatestProviderStatsAnySession: (provider) => getLatestProviderStatsAnySession(provider),
     getOnboardingSummary: () => dbInstance.getOnboardingSummary(),
     getPermission: (tool, targetDir) => dbInstance.getPermission(tool, targetDir),
     setPermission: (tool, targetDir, params) => dbInstance.setPermission(tool, targetDir, params),

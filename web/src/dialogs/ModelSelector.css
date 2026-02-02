@@ -12,6 +12,11 @@
   overflow-y: auto;
 }
 
+.model-selector .modal-actions {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .model-card {
   display: flex;
   align-items: center;

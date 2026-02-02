@@ -23,11 +23,20 @@
   height: 6px;
 }
 
+/* Extra large size */
+.progress-bar-xl {
+  height: 12px;
+}
+
 /* With label */
 .progress-bar-with-label {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+.progress-bar-with-label .progress-bar {
+  width: 100%;
 }
 
 .progress-bar-label {

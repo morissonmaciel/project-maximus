@@ -10,16 +10,24 @@ export function saveConfig(state) {
       lastSessionId: state.lastSessionId,
       system: state.systemConfig,
       anthropic: {
-        credentials: state.anthropicCredentials
+        credentials: state.anthropicCredentials,
+        preferredModel: state.anthropicPreferredModel
+      },
+      claudeCode: {
+        credentials: state.claudeCodeCredentials,
+        preferredModel: state.claudeCodePreferredModel
       },
       openaiCodex: {
-        credentials: state.openaiCodexCredentials
+        credentials: state.openaiCodexCredentials,
+        preferredModel: state.openaiCodexPreferredModel
       },
       kimi: {
-        credentials: state.kimiCredentials
+        credentials: state.kimiCredentials,
+        preferredModel: state.kimiPreferredModel
       },
       nvidia: {
-        credentials: state.nvidiaCredentials
+        credentials: state.nvidiaCredentials,
+        preferredModel: state.nvidiaPreferredModel
       },
       ollama: {
         host: state.ollamaConfig.host,

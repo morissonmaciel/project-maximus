@@ -55,12 +55,40 @@ let pendingOAuth = null;
 
 // Runtime usage tracking
 let runtimeStats = {
-  anthropic: { usage: null, model: DEFAULT_MODEL, limits: { maxTokens: DEFAULT_MAX_TOKENS }, rateLimits: null },
-  openaiCodex: { usage: null, model: DEFAULT_OPENAI_CODEX_MODEL, limits: { maxTokens: DEFAULT_MAX_TOKENS } },
-  kimi: { usage: null, model: DEFAULT_KIMI_MODEL, limits: { maxTokens: DEFAULT_KIMI_MAX_OUTPUT_TOKENS } },
-  nvidia: { usage: null, model: DEFAULT_NVIDIA_MODEL, limits: { maxTokens: DEFAULT_NVIDIA_MAX_TOKENS } },
-  ollama: { usage: null }
+  anthropic: { usage: null, accumulatedUsage: null, model: DEFAULT_MODEL, limits: { maxTokens: DEFAULT_MAX_TOKENS }, rateLimits: null },
+  claudeCode: { usage: null, accumulatedUsage: null, model: DEFAULT_MODEL, limits: { maxTokens: DEFAULT_MAX_TOKENS }, rateLimits: null },
+  openaiCodex: { usage: null, accumulatedUsage: null, model: DEFAULT_OPENAI_CODEX_MODEL, limits: { maxTokens: DEFAULT_MAX_TOKENS, contextWindow: 128000 } },
+  kimi: { usage: null, accumulatedUsage: null, model: DEFAULT_KIMI_MODEL, limits: { maxTokens: DEFAULT_KIMI_MAX_OUTPUT_TOKENS } },
+  nvidia: { usage: null, accumulatedUsage: null, model: DEFAULT_NVIDIA_MODEL, limits: { maxTokens: DEFAULT_NVIDIA_MAX_TOKENS } },
+  ollama: { usage: null, accumulatedUsage: null }
 };
+
+console.log('[Gateway] Runtime stats initialized:', JSON.stringify(runtimeStats, null, 2));
+
+function accumulateUsage(current, usage) {
+  if (!usage) return current || null;
+  const input = Number(usage.input_tokens) || 0;
+  const output = Number(usage.output_tokens) || 0;
+  const total = Number(usage.total_tokens) || (input + output);
+  const base = current || { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
+  return {
+    input_tokens: base.input_tokens + input,
+    output_tokens: base.output_tokens + output,
+    total_tokens: base.total_tokens + total
+  };
+}
+
+function recordProviderStats(sessionId, provider, updates, accumulatedUsage) {
+  if (!memoryStore?.insertProviderStats) return;
+  const usage = updates?.usage || null;
+  const limits = updates?.limits || null;
+  if (!usage && !limits) return;
+  try {
+    memoryStore.insertProviderStats(sessionId, provider, usage, limits, accumulatedUsage || null);
+  } catch (err) {
+    console.warn('[Gateway] Failed to persist provider stats:', err.message);
+  }
+}
 
 // Purge memory confirmation token storage
 let pendingPurgeToken = null;
@@ -249,19 +277,29 @@ function createRequestToolRunner({ memoryStore, sessionId, provider, ws }) {
   return createToolRunner({
     getConfigurationSnapshot: () => config.buildConfigurationSnapshot({
       lastAnthropicUsage: runtimeStats.anthropic.usage,
+      lastAnthropicAccumulatedUsage: runtimeStats.anthropic.accumulatedUsage,
       lastAnthropicModel: runtimeStats.anthropic.model,
       lastAnthropicLimits: runtimeStats.anthropic.limits,
       lastAnthropicRateLimits: runtimeStats.anthropic.rateLimits,
+      lastClaudeCodeUsage: runtimeStats.claudeCode.usage,
+      lastClaudeCodeAccumulatedUsage: runtimeStats.claudeCode.accumulatedUsage,
+      lastClaudeCodeModel: runtimeStats.claudeCode.model,
+      lastClaudeCodeLimits: runtimeStats.claudeCode.limits,
+      lastClaudeCodeRateLimits: runtimeStats.claudeCode.rateLimits,
       lastOpenAICodexUsage: runtimeStats.openaiCodex.usage,
+      lastOpenAICodexAccumulatedUsage: runtimeStats.openaiCodex.accumulatedUsage,
       lastOpenAICodexModel: runtimeStats.openaiCodex.model,
       lastOpenAICodexLimits: runtimeStats.openaiCodex.limits,
       lastKimiUsage: runtimeStats.kimi.usage,
+      lastKimiAccumulatedUsage: runtimeStats.kimi.accumulatedUsage,
       lastKimiModel: runtimeStats.kimi.model,
       lastKimiLimits: runtimeStats.kimi.limits,
       lastNvidiaUsage: runtimeStats.nvidia.usage,
+      lastNvidiaAccumulatedUsage: runtimeStats.nvidia.accumulatedUsage,
       lastNvidiaModel: runtimeStats.nvidia.model,
       lastNvidiaLimits: runtimeStats.nvidia.limits,
       lastOllamaUsage: runtimeStats.ollama.usage,
+      lastOllamaAccumulatedUsage: runtimeStats.ollama.accumulatedUsage,
       lastOllamaStatus: config.getLastOllamaStatus()
     }, gatewayState),
     getSystemConfig: () => config.getConfigState().systemConfig,
@@ -380,6 +418,41 @@ try {
 } catch (err) {
   const message = err instanceof Error ? err.message : String(err);
   console.warn(`[Gateway] Memory index unavailable: ${message}`);
+}
+
+// Load latest provider stats from previous sessions on startup
+if (memoryStore?.getLatestProviderStatsAnySession) {
+  console.log('[Gateway] Loading previous session stats...');
+
+  const loadProviderStats = (provider, statsKey) => {
+    try {
+      const latest = memoryStore.getLatestProviderStatsAnySession(provider);
+      if (latest) {
+        if (latest.usage) {
+          runtimeStats[statsKey].usage = latest.usage;
+          console.log(`[Gateway] Loaded ${provider} usage from previous session:`, latest.usage);
+        }
+        if (latest.limits) {
+          runtimeStats[statsKey].limits = latest.limits;
+          console.log(`[Gateway] Loaded ${provider} limits from previous session:`, latest.limits);
+        }
+        if (latest.accumulatedUsage) {
+          runtimeStats[statsKey].accumulatedUsage = latest.accumulatedUsage;
+          console.log(`[Gateway] Loaded ${provider} accumulated usage:`, latest.accumulatedUsage);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Gateway] Failed to load ${provider} stats:`, err.message);
+    }
+  };
+
+  loadProviderStats('anthropic', 'anthropic');
+  loadProviderStats('openai-codex', 'openaiCodex');
+  loadProviderStats('kimi', 'kimi');
+  loadProviderStats('nvidia', 'nvidia');
+  loadProviderStats('ollama', 'ollama');
+
+  console.log('[Gateway] Provider stats loaded.');
 }
 
 // WebSocket Server
@@ -661,20 +734,26 @@ wss.on('connection', (ws) => {
 
         case 'startOAuthFlow': {
           try {
-            const providerToAuth = message.provider || 'anthropic';
+            const providerToAuth = message.provider || 'claude-code';
             let url, verifier, state;
-            
-            if (providerToAuth === 'openai-codex') {
+
+            if (providerToAuth === 'anthropic') {
+              messenger.error('Anthropic provider no longer supports OAuth. Use Claude Code provider.');
+              break;
+            } else if (providerToAuth === 'openai-codex') {
                const result = await openaiCodexAuth.getAuthorizationUrl();
                url = result.url;
                verifier = result.verifier;
                state = result.state;
-            } else {
+            } else if (providerToAuth === 'claude-code') {
                const result = await anthropicAuth.getAuthorizationUrl();
                url = result.url;
                verifier = result.verifier;
+            } else {
+               messenger.error(`Unknown OAuth provider: ${providerToAuth}`);
+               break;
             }
-            
+
             pendingOAuth = { verifier, state, provider: providerToAuth };
             messenger.oauthUrl(url);
           } catch (err) {
@@ -691,7 +770,7 @@ wss.on('connection', (ws) => {
 
           try {
             const { code, state } = message;
-            const providerToAuth = pendingOAuth.provider || 'anthropic';
+            const providerToAuth = pendingOAuth.provider || 'claude-code';
             console.log(`[Gateway] Exchanging OAuth code for ${providerToAuth}...`);
 
             if (providerToAuth === 'openai-codex') {
@@ -708,10 +787,10 @@ wss.on('connection', (ws) => {
                 if (!configState.provider) {
                     config.updateProvider('openai-codex');
                 }
-            } else {
+            } else if (providerToAuth === 'claude-code') {
                 const tokens = await anthropicAuth.exchangeCodeForTokens(code, state, pendingOAuth.verifier);
                 config.updateConfig({
-                    anthropicCredentials: {
+                    claudeCodeCredentials: {
                         type: 'oauth',
                         accessToken: tokens.accessToken,
                         refreshToken: tokens.refreshToken,
@@ -719,8 +798,11 @@ wss.on('connection', (ws) => {
                     }
                 });
                 if (!configState.provider) {
-                    config.updateProvider('anthropic');
+                    config.updateProvider('claude-code');
                 }
+            } else {
+                messenger.error(`Unknown OAuth provider: ${providerToAuth}`);
+                break;
             }
 
             pendingOAuth = null;
@@ -735,13 +817,36 @@ wss.on('connection', (ws) => {
         }
 
         case 'clearOAuthCredentials': {
-          const providerToClear = message.provider || 'anthropic';
+          const providerToClear = message.provider || 'claude-code';
           console.log(`[Gateway] Clearing OAuth credentials for ${providerToClear}...`);
 
           if (providerToClear === 'openai-codex') {
             config.updateConfig({ openaiCodexCredentials: null });
+          } else if (providerToClear === 'claude-code') {
+            config.updateConfig({ claudeCodeCredentials: null });
           } else if (providerToClear === 'anthropic') {
+            messenger.error('Anthropic provider uses API key authentication. Use clearApiKey instead.');
+            break;
+          }
+
+          messenger.credentialsCleared(providerToClear);
+          sendStatus(ws);
+          break;
+        }
+
+        case 'clearApiKey': {
+          const providerToClear = message.provider || 'anthropic';
+          console.log(`[Gateway] Clearing API key for ${providerToClear}...`);
+
+          if (providerToClear === 'anthropic') {
             config.updateConfig({ anthropicCredentials: null });
+          } else if (providerToClear === 'kimi') {
+            config.updateConfig({ kimiCredentials: null });
+          } else if (providerToClear === 'nvidia') {
+            config.updateConfig({ nvidiaCredentials: null });
+          } else {
+            messenger.error(`Unknown provider for API key: ${providerToClear}`);
+            break;
           }
 
           messenger.credentialsCleared(providerToClear);
@@ -897,9 +1002,16 @@ wss.on('connection', (ws) => {
             {
               id: 'anthropic',
               label: 'Anthropic',
-              configured: !!currentConfig.anthropicClient,
+              configured: !!currentConfig.anthropicCredentials,
               authType: currentConfig.anthropicCredentials?.type || null,
               enabled: providersConfig.anthropic?.enabled !== false
+            },
+            {
+              id: 'claude-code',
+              label: 'Claude Code',
+              configured: !!currentConfig.claudeCodeCredentials,
+              authType: currentConfig.claudeCodeCredentials?.type || null,
+              enabled: providersConfig['claude-code']?.enabled !== false
             },
             {
               id: 'openai-codex',
@@ -956,21 +1068,58 @@ wss.on('connection', (ws) => {
           await config.refreshOllamaStatus();
           const runtimeState = {
             lastAnthropicUsage: runtimeStats.anthropic.usage,
+            lastAnthropicAccumulatedUsage: runtimeStats.anthropic.accumulatedUsage,
             lastAnthropicModel: runtimeStats.anthropic.model,
             lastAnthropicLimits: runtimeStats.anthropic.limits,
             lastAnthropicRateLimits: runtimeStats.anthropic.rateLimits,
+            lastClaudeCodeUsage: runtimeStats.claudeCode.usage,
+            lastClaudeCodeAccumulatedUsage: runtimeStats.claudeCode.accumulatedUsage,
+            lastClaudeCodeModel: runtimeStats.claudeCode.model,
+            lastClaudeCodeLimits: runtimeStats.claudeCode.limits,
+            lastClaudeCodeRateLimits: runtimeStats.claudeCode.rateLimits,
             lastOpenAICodexUsage: runtimeStats.openaiCodex.usage,
+            lastOpenAICodexAccumulatedUsage: runtimeStats.openaiCodex.accumulatedUsage,
             lastOpenAICodexModel: runtimeStats.openaiCodex.model,
             lastOpenAICodexLimits: runtimeStats.openaiCodex.limits,
             lastKimiUsage: runtimeStats.kimi.usage,
+            lastKimiAccumulatedUsage: runtimeStats.kimi.accumulatedUsage,
             lastKimiModel: runtimeStats.kimi.model,
             lastKimiLimits: runtimeStats.kimi.limits,
             lastNvidiaUsage: runtimeStats.nvidia.usage,
+            lastNvidiaAccumulatedUsage: runtimeStats.nvidia.accumulatedUsage,
             lastNvidiaModel: runtimeStats.nvidia.model,
             lastNvidiaLimits: runtimeStats.nvidia.limits,
             lastOllamaUsage: runtimeStats.ollama.usage,
+            lastOllamaAccumulatedUsage: runtimeStats.ollama.accumulatedUsage,
             lastOllamaStatus: config.getLastOllamaStatus()
           };
+          if (memoryStore?.getLatestProviderStats) {
+            const sessionId = ws.sessionId;
+            const mergeIfMissing = (provider, usageKey, limitsKey, accumulatedKey) => {
+              const latest = memoryStore.getLatestProviderStats(sessionId, provider);
+              if (latest) {
+                if (!runtimeState[usageKey] && latest.usage) runtimeState[usageKey] = latest.usage;
+                if (!runtimeState[limitsKey] && latest.limits) runtimeState[limitsKey] = latest.limits;
+                if (!runtimeState[accumulatedKey] && latest.accumulatedUsage) runtimeState[accumulatedKey] = latest.accumulatedUsage;
+              }
+              const needsUsage = !runtimeState[usageKey];
+              const limitsValue = runtimeState[limitsKey];
+              const needsCodexLimits = provider === 'openai-codex' && (!limitsValue || (!limitsValue.daily && !limitsValue.weekly));
+              const needsLimits = !limitsValue || needsCodexLimits;
+              if (!needsUsage && !needsLimits) return;
+              if (!memoryStore.getLatestProviderStatsAnySession) return;
+              const latestAny = memoryStore.getLatestProviderStatsAnySession(provider);
+              if (!latestAny) return;
+              if (!runtimeState[usageKey] && latestAny.usage) runtimeState[usageKey] = latestAny.usage;
+              if (!runtimeState[limitsKey] && latestAny.limits) runtimeState[limitsKey] = latestAny.limits;
+            };
+            mergeIfMissing('anthropic', 'lastAnthropicUsage', 'lastAnthropicLimits', 'lastAnthropicAccumulatedUsage');
+            mergeIfMissing('claude-code', 'lastClaudeCodeUsage', 'lastClaudeCodeLimits', 'lastClaudeCodeAccumulatedUsage');
+            mergeIfMissing('openai-codex', 'lastOpenAICodexUsage', 'lastOpenAICodexLimits', 'lastOpenAICodexAccumulatedUsage');
+            mergeIfMissing('kimi', 'lastKimiUsage', 'lastKimiLimits', 'lastKimiAccumulatedUsage');
+            mergeIfMissing('nvidia', 'lastNvidiaUsage', 'lastNvidiaLimits', 'lastNvidiaAccumulatedUsage');
+            mergeIfMissing('ollama', 'lastOllamaUsage', 'lastOllamaUsage', 'lastOllamaAccumulatedUsage');
+          }
           const settingsPayload = config.buildSettingsSnapshot(runtimeState);
           messenger.settings(settingsPayload);
           break;
@@ -1020,16 +1169,28 @@ wss.on('connection', (ws) => {
           const validation = config.validateProviderAndModel(providerId, model);
           if (!validation.valid) {
             messenger.notification(
-              'Provider Unavailable',
-              validation.error || 'The selected provider is currently disabled or the model is not supported. Please select a different provider.',
-              'provider-disabled'
+              'Invalid Model Selection',
+              validation.error || 'The selected model is not supported by this provider.',
+              'invalid-model'
             );
             messenger.modelSet(false, model, providerId);
             break;
           }
 
-          // Update config with selected model
-          config.updateConfig({ currentModel: model });
+          // CRITICAL FIX: Different behavior based on whether this is the current provider
+          const isCurrentProvider = providerId === configState.provider;
+
+          if (isCurrentProvider) {
+            // Selecting model for CURRENT provider → Update both global and provider preference
+            config.updateProviderModel(providerId, model);
+            config.updateConfig({ currentModel: model });
+            console.log(`[Gateway] Updated current model: ${model} for provider: ${providerId}`);
+          } else {
+            // Selecting model for DIFFERENT provider → Only update that provider's preference
+            config.updateProviderModel(providerId, model);
+            console.log(`[Gateway] Updated preferred model: ${model} for provider: ${providerId} (not current)`);
+          }
+
           messenger.modelSet(true, model, providerId);
           sendStatus(ws);
           break;
@@ -1197,6 +1358,9 @@ async function handleChat(ws, message, configState, messenger, meta = null) {
       case 'anthropic':
         assistantText = await handleAnthropicChat(ws, outboundMessages, systemPromptText, memoryText, configState, messenger);
         break;
+      case 'claude-code':
+        assistantText = await handleClaudeCodeChat(ws, outboundMessages, systemPromptText, memoryText, configState, messenger);
+        break;
       case 'ollama':
         assistantText = await handleOllamaChat(ws, outboundMessages, systemPromptText, memoryText, configState, messenger);
         break;
@@ -1252,13 +1416,7 @@ async function handleChat(ws, message, configState, messenger, meta = null) {
  */
 async function handleAnthropicChat(ws, messages, systemPrompt, memoryText, configState, messenger) {
   if (!configState.anthropicClient) {
-    messenger.error('Not configured');
-    return '';
-  }
-
-  const isValid = await ensureValidToken();
-  if (!isValid) {
-    messenger.error('Token expired. Re-authenticate.');
+    messenger.error('Anthropic not configured');
     return '';
   }
 
@@ -1278,14 +1436,65 @@ async function handleAnthropicChat(ws, messages, systemPrompt, memoryText, confi
     memoryText,
     model: configState.currentModel || DEFAULT_MODEL,
     maxTokens: DEFAULT_MAX_TOKENS,
-    isOAuth: configState.anthropicCredentials.type === 'oauth',
+    isOAuth: false,
     runToolCall,
     memoryStore,
     onStats: (updates) => {
-      if (updates.usage) runtimeStats.anthropic.usage = updates.usage;
+      if (updates.usage) {
+        runtimeStats.anthropic.usage = updates.usage;
+        runtimeStats.anthropic.accumulatedUsage = accumulateUsage(runtimeStats.anthropic.accumulatedUsage, updates.usage);
+      }
       if (updates.model) runtimeStats.anthropic.model = updates.model;
       if (updates.rateLimits) runtimeStats.anthropic.rateLimits = updates.rateLimits;
       if (updates.limits) runtimeStats.anthropic.limits = updates.limits;
+      recordProviderStats(ws.sessionId, 'anthropic', updates, runtimeStats.anthropic.accumulatedUsage);
+    }
+  });
+}
+
+/**
+ * Handle Claude Code chat (OAuth)
+ */
+async function handleClaudeCodeChat(ws, messages, systemPrompt, memoryText, configState, messenger) {
+  if (!configState.claudeCodeClient) {
+    messenger.error('Claude Code not configured');
+    return '';
+  }
+
+  const isValid = await ensureValidToken();
+  if (!isValid) {
+    messenger.error('Token expired. Re-authenticate.');
+    return '';
+  }
+
+  // Create tool runner with request context for file operations
+  const runToolCall = createRequestToolRunner({
+    memoryStore,
+    sessionId: ws.sessionId,
+    provider: 'claude-code',
+    ws
+  });
+
+  return await runAnthropicLoop({
+    ws,
+    client: configState.claudeCodeClient,
+    baseMessages: messages,
+    systemPrompt,
+    memoryText,
+    model: configState.currentModel || DEFAULT_MODEL,
+    maxTokens: DEFAULT_MAX_TOKENS,
+    isOAuth: true,
+    runToolCall,
+    memoryStore,
+    onStats: (updates) => {
+      if (updates.usage) {
+        runtimeStats.claudeCode.usage = updates.usage;
+        runtimeStats.claudeCode.accumulatedUsage = accumulateUsage(runtimeStats.claudeCode.accumulatedUsage, updates.usage);
+      }
+      if (updates.model) runtimeStats.claudeCode.model = updates.model;
+      if (updates.rateLimits) runtimeStats.claudeCode.rateLimits = updates.rateLimits;
+      if (updates.limits) runtimeStats.claudeCode.limits = updates.limits;
+      recordProviderStats(ws.sessionId, 'claude-code', updates, runtimeStats.claudeCode.accumulatedUsage);
     }
   });
 }
@@ -1323,7 +1532,11 @@ async function handleOllamaChat(ws, messages, systemPrompt, memoryText, configSt
     runToolCall,
     memoryStore,
     onStats: (updates) => {
-      if (updates.usage) runtimeStats.ollama.usage = updates.usage;
+      if (updates.usage) {
+        runtimeStats.ollama.usage = updates.usage;
+        runtimeStats.ollama.accumulatedUsage = accumulateUsage(runtimeStats.ollama.accumulatedUsage, updates.usage);
+      }
+      recordProviderStats(ws.sessionId, 'ollama', updates, runtimeStats.ollama.accumulatedUsage);
     }
   });
 }
@@ -1361,8 +1574,14 @@ async function handleOpenAICodexChat(ws, messages, systemPrompt, memoryText, con
     runToolCall,
     memoryStore,
     onStats: (updates) => {
-      if (updates.usage) runtimeStats.openaiCodex.usage = updates.usage;
+      if (updates.usage) {
+        runtimeStats.openaiCodex.usage = updates.usage;
+        runtimeStats.openaiCodex.accumulatedUsage = accumulateUsage(runtimeStats.openaiCodex.accumulatedUsage, updates.usage);
+      }
       if (updates.model) runtimeStats.openaiCodex.model = updates.model;
+      if (updates.limits) runtimeStats.openaiCodex.limits = updates.limits;
+      console.log('[Gateway] OpenAI Codex stats updated:', JSON.stringify(runtimeStats.openaiCodex, null, 2));
+      recordProviderStats(ws.sessionId, 'openai-codex', updates, runtimeStats.openaiCodex.accumulatedUsage);
     }
   });
 }
@@ -1405,9 +1624,13 @@ async function handleKimiChat(ws, messages, systemPrompt, memoryText, configStat
       runToolCall,
       memoryStore,
       onStats: (updates) => {
-        if (updates.usage) runtimeStats.kimi.usage = updates.usage;
+        if (updates.usage) {
+          runtimeStats.kimi.usage = updates.usage;
+          runtimeStats.kimi.accumulatedUsage = accumulateUsage(runtimeStats.kimi.accumulatedUsage, updates.usage);
+        }
         if (updates.model) runtimeStats.kimi.model = updates.model;
         if (updates.limits) runtimeStats.kimi.limits = updates.limits;
+        recordProviderStats(ws.sessionId, 'kimi', updates, runtimeStats.kimi.accumulatedUsage);
       }
     });
     const elapsed = Date.now() - startedAt;
@@ -1461,9 +1684,13 @@ async function handleNvidiaChat(ws, messages, systemPrompt, memoryText, configSt
       runToolCall,
       memoryStore,
       onStats: (updates) => {
-        if (updates.usage) runtimeStats.nvidia.usage = updates.usage;
+        if (updates.usage) {
+          runtimeStats.nvidia.usage = updates.usage;
+          runtimeStats.nvidia.accumulatedUsage = accumulateUsage(runtimeStats.nvidia.accumulatedUsage, updates.usage);
+        }
         if (updates.model) runtimeStats.nvidia.model = updates.model;
         if (updates.limits) runtimeStats.nvidia.limits = updates.limits;
+        recordProviderStats(ws.sessionId, 'nvidia', updates, runtimeStats.nvidia.accumulatedUsage);
       }
     });
     const elapsed = Date.now() - startedAt;

@@ -1,24 +1,27 @@
 /**
- * Anthropic Provider Adapter
- * 
+ * Claude Code Provider Adapter
+ *
+ * OAuth-authenticated provider for Claude Pro/Max users.
+ * Wraps Anthropic SDK with OAuth credentials.
+ *
  * Responsibilities:
- * - Anthropic SDK client operations
+ * - Anthropic SDK client operations (OAuth only)
  * - Streaming response handling
  * - Rate limit tracking
- * 
+ *
  * Note: Payload construction lives in messaging/payloads.js
  * Note: Tool loop execution lives in tools/loops.js
  */
 
 import { ProviderCapabilities, parseRateLimitHeaders } from './types.js';
 
-export const name = ProviderCapabilities.ANTHROPIC.name;
+export const name = 'claude-code';
 export const supportsTools = ProviderCapabilities.ANTHROPIC.supportsTools;
 
 /**
- * Stream chat with Anthropic
+ * Stream chat with Claude Code (OAuth)
  * @param {Object} params
- * @param {Object} params.client - Anthropic SDK client
+ * @param {Object} params.client - Anthropic SDK client (OAuth configured)
  * @param {Object} params.payload - Pre-built payload from messaging/payloads.js
  * @param {WebSocket} params.ws - WebSocket for streaming
  * @returns {Promise<{finalMessage: Object, rateLimits: Object|null}>}
@@ -61,31 +64,20 @@ export async function streamChat({ client, payload, ws }) {
 }
 
 /**
- * Check if Anthropic provider is ready (API key only)
+ * Check if Claude Code provider is ready
  * @param {Object} credentials
  * @returns {boolean}
  */
 export function isReady(credentials) {
-  return !!credentials && credentials.type === 'apiKey';
+  return !!credentials && credentials.type === 'oauth';
 }
 
 /**
  * Get auth type from credentials
  * @param {Object} credentials
- * @returns {string|null} 'apiKey' or null
+ * @returns {string|null} 'oauth' or null
  */
 export function getAuthType(credentials) {
   if (!credentials) return null;
-  return credentials.type === 'apiKey' ? 'apiKey' : null;
-}
-
-/**
- * Detect credential type from key string
- * @param {string} key
- * @returns {string} 'apiKey' or 'unknown'
- */
-export function detectCredentialType(key) {
-  if (!key || typeof key !== 'string') return 'unknown';
-  if (key.startsWith('sk-ant-api')) return 'apiKey';
-  return 'unknown';
+  return credentials.type === 'oauth' ? 'oauth' : null;
 }

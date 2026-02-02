@@ -18,9 +18,15 @@ export const configState = {
   provider: null,
   currentModel: null,
   anthropicCredentials: null,
+  anthropicPreferredModel: null,
+  claudeCodeCredentials: null,
+  claudeCodePreferredModel: null,
   openaiCodexCredentials: null,
+  openaiCodexPreferredModel: null,
   kimiCredentials: null,
+  kimiPreferredModel: null,
   nvidiaCredentials: null,
+  nvidiaPreferredModel: null,
   kimiConfig: {
     endpoint: DEFAULT_KIMI_ENDPOINT,
     model: DEFAULT_KIMI_MODEL,
@@ -48,5 +54,6 @@ export const configState = {
   
   // Runtime clients
   anthropicClient: null,
+  claudeCodeClient: null,
   ollamaClient: null
 };

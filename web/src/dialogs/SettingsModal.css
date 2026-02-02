@@ -74,7 +74,6 @@
   padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
   overflow-y: auto;
 }
 
@@ -103,6 +102,29 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-weight: var(--weight-medium);
+}
+
+/* Settings Navigation Section Grouping */
+.settings-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-nav-section:not(:first-child) {
+  margin-top: var(--spacing-lg);
+}
+
+.settings-nav-section-header {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--spacing-xs) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .settings-content {

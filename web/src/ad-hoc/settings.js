@@ -27,7 +27,9 @@ export function installSettingsHandlers() {
     const currentSettings = settingsStore.state.get().settings || {};
     const providersMap = {};
     (data.providers || []).forEach(p => {
-      providersMap[p.id === 'openai-codex' ? 'openai-codex' : p.id] = p;
+      const key = p.id === 'openai-codex' ? 'openai-codex' : p.id;
+      const existing = currentSettings.providers?.[key] || {};
+      providersMap[key] = { ...existing, ...p };
     });
 
     settingsStore.setSettings({

@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const DEFAULT_TABLES = {
   embeddingCache: 'embedding_cache',
@@ -171,6 +172,22 @@ function ensureMemoryIndexSchema(params) {
   params.db.exec(
     'CREATE INDEX IF NOT EXISTS idx_permissions_tool_dir ON permissions(tool, target_dir);'
   );
+
+  params.db.exec(`
+    CREATE TABLE IF NOT EXISTS provider_stats (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      usage TEXT,
+      limits TEXT,
+      accumulated_usage TEXT,
+      created_at INTEGER NOT NULL
+    );
+  `);
+  params.db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_provider_stats_session_provider ON provider_stats(session_id, provider, created_at);'
+  );
+  ensureColumn(params.db, 'provider_stats', 'accumulated_usage', 'TEXT');
 
   return { ftsAvailable, ...(ftsError ? { ftsError } : {}) };
 }
@@ -372,6 +389,59 @@ export function createDatabase(options = {}) {
     return stmt.all(...params);
   };
 
+  const insertProviderStats = (sessionId, provider, usage = null, limits = null, accumulatedUsage = null) => {
+    const stmt = db.prepare(
+      `INSERT INTO provider_stats (id, session_id, provider, usage, limits, accumulated_usage, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?);`
+    );
+    stmt.run(
+      crypto.randomUUID(),
+      sessionId,
+      provider,
+      usage ? JSON.stringify(usage) : null,
+      limits ? JSON.stringify(limits) : null,
+      accumulatedUsage ? JSON.stringify(accumulatedUsage) : null,
+      Date.now()
+    );
+  };
+
+  const getLatestProviderStats = (sessionId, provider) => {
+    const stmt = db.prepare(
+      `SELECT usage, limits, accumulated_usage, created_at
+       FROM provider_stats
+       WHERE session_id = ? AND provider = ?
+       ORDER BY created_at DESC
+       LIMIT 1;`
+    );
+    const row = stmt.get(sessionId, provider);
+    if (!row) return null;
+    return {
+      usage: row.usage ? JSON.parse(row.usage) : null,
+      limits: row.limits ? JSON.parse(row.limits) : null,
+      accumulatedUsage: row.accumulated_usage ? JSON.parse(row.accumulated_usage) : null,
+      created_at: row.created_at
+    };
+  };
+
+  const getLatestProviderStatsAnySession = (provider) => {
+    const stmt = db.prepare(
+      `SELECT usage, limits, accumulated_usage, created_at, session_id
+       FROM provider_stats
+       WHERE provider = ?
+       ORDER BY created_at DESC
+       LIMIT 1;`
+    );
+    const row = stmt.get(provider);
+    if (!row) return null;
+    return {
+      usage: row.usage ? JSON.parse(row.usage) : null,
+      limits: row.limits ? JSON.parse(row.limits) : null,
+      accumulatedUsage: row.accumulated_usage ? JSON.parse(row.accumulated_usage) : null,
+      created_at: row.created_at,
+      session_id: row.session_id
+    };
+  };
+
   const checkPermission = (tool, targetPath) => {
     const normalized = path.resolve(targetPath);
     const targetDir = targetPath.endsWith(path.sep)
@@ -450,6 +520,9 @@ export function createDatabase(options = {}) {
     listPermissions,
     checkPermission,
     removePermission,
-    getOnboardingSummary
+    getOnboardingSummary,
+    insertProviderStats,
+    getLatestProviderStats,
+    getLatestProviderStatsAnySession
   };
 }

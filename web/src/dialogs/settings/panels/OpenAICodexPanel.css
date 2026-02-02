@@ -1,33 +1,27 @@
 @import './AnthropicPanel.css';
 
-/* OAuth Status Indicator */
-.oauth-status {
+.settings-subtitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+}
+
+.limits-progress-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-  border-radius: 6px;
-  background: var(--bg-secondary);
+  gap: var(--spacing-sm);
 }
 
-.oauth-status.configured {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+.limits-progress-row .progress-bar {
+  flex: 1;
+  min-width: 200px;
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  color: white;
-  font-size: 12px;
-}
-
-.status-badge.configured {
-  background: #22c55e;
+.limits-progress-value {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 45px;
+  text-align: right;
 }

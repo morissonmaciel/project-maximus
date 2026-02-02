@@ -20,6 +20,7 @@ export function normalizeConfig(config = {}) {
   const result = {
     provider: null,
     anthropicCredentials: null,
+    claudeCodeCredentials: null,
     openaiCodexCredentials: null,
     kimiCredentials: null,
     nvidiaCredentials: null,
@@ -60,10 +61,16 @@ export function normalizeConfig(config = {}) {
     result.anthropicCredentials = config.anthropic?.credentials || null;
     result.provider = config.provider || null;
   }
-  
+
+  result.anthropicPreferredModel = config.anthropic?.preferredModel || null;
+  result.claudeCodeCredentials = config.claudeCode?.credentials || null;
+  result.claudeCodePreferredModel = config.claudeCode?.preferredModel || null;
   result.openaiCodexCredentials = config.openaiCodex?.credentials || null;
+  result.openaiCodexPreferredModel = config.openaiCodex?.preferredModel || null;
   result.kimiCredentials = config.kimi?.credentials || null;
+  result.kimiPreferredModel = config.kimi?.preferredModel || null;
   result.nvidiaCredentials = config.nvidia?.credentials || null;
+  result.nvidiaPreferredModel = config.nvidia?.preferredModel || null;
 
   const rawKimiEndpoint = config.kimi?.endpoint;
   const normalizedKimiEndpoint = rawKimiEndpoint === legacyKimiEndpoint
