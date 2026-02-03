@@ -1,19 +1,14 @@
 /**
  * Messaging Stream Orchestration
- * 
+ *
  * Responsibilities:
  * - Orchestrate streaming between providers and WebSocket
  * - Send WebSocket events (streamStart, streamChunk, streamEnd)
  * - Normalize provider responses to consistent format
- * 
- * NOT Responsibilities:
- * - Direct SDK calls (now in providers/)
- * - Payload construction (payloads.js)
- * - Tool execution (tools/loops.js)
  */
 
 import * as providers from '../providers/index.js';
-import { parseRateLimitHeaders } from '../providers/types.js';
+import { emitError, emitStreamChunk, emitStreamEnd, emitStreamStart } from '../ws/protocol.js';
 
 /**
  * Stream Anthropic response
@@ -23,7 +18,6 @@ import { parseRateLimitHeaders } from '../providers/types.js';
  * @returns {Promise<{finalMessage: Object, rateLimits: Object|null}>}
  */
 export async function streamAnthropicResponse(client, ws, params) {
-  // Use the anthropic provider adapter
   return providers.anthropic.streamChat({ client, payload: params, ws });
 }
 
@@ -35,7 +29,6 @@ export async function streamAnthropicResponse(client, ws, params) {
  * @returns {Promise<{toolCalls: Array, assistantText: string, usage: Object}>}
  */
 export async function streamOllamaResponse(client, ws, params) {
-  // Use the ollama provider adapter
   return providers.ollama.streamChat({ client, payload: params, ws });
 }
 
@@ -47,8 +40,8 @@ export async function streamOllamaResponse(client, ws, params) {
  */
 export async function streamCodexResponse(ws, params) {
   const { model, messages, system, credentials } = params;
-  
-  ws.send(JSON.stringify({ type: 'streamStart' }));
+
+  emitStreamStart(ws);
 
   try {
     const { content, toolCalls, usage, limits } = await providers.openaiCodex.streamChat({
@@ -58,19 +51,17 @@ export async function streamCodexResponse(ws, params) {
       tools: params.tools || [],
       credentials,
       onEvent: (event) => {
-        // Send text deltas as stream chunks
         if (event.type === 'text' && event.delta) {
-          ws.send(JSON.stringify({ type: 'streamChunk', content: event.delta }));
+          emitStreamChunk(ws, event.delta);
         }
       }
     });
 
-    ws.send(JSON.stringify({ type: 'streamEnd' }));
+    emitStreamEnd(ws);
 
-    // Return normalized format matching other providers
     return { content, toolCalls, usage, limits };
   } catch (err) {
-    ws.send(JSON.stringify({ type: 'error', message: err.message }));
+    emitError(ws, err.message);
     throw err;
   }
 }
@@ -82,7 +73,7 @@ export async function streamCodexResponse(ws, params) {
  * @returns {Promise<{content: Array, toolCalls: Array, usage: Object}>}
  */
 export async function streamNvidiaResponse(ws, params) {
-  ws.send(JSON.stringify({ type: 'streamStart' }));
+  emitStreamStart(ws);
 
   try {
     const { content, toolCalls, usage } = await providers.nvidia.streamChat({
@@ -100,17 +91,17 @@ export async function streamNvidiaResponse(ws, params) {
       timeoutMs: params.timeoutMs,
       onEvent: (event) => {
         if (event.type === 'text' && event.delta) {
-          ws.send(JSON.stringify({ type: 'streamChunk', content: event.delta }));
+          emitStreamChunk(ws, event.delta);
         }
       }
     });
 
-    ws.send(JSON.stringify({ type: 'streamEnd' }));
+    emitStreamEnd(ws);
     return { content, toolCalls, usage };
   } catch (err) {
     console.error(`[Gateway] NVIDIA stream error: ${err.message}`);
-    ws.send(JSON.stringify({ type: 'streamEnd' }));
-    ws.send(JSON.stringify({ type: 'error', message: err.message }));
+    emitStreamEnd(ws);
+    emitError(ws, err.message);
     throw err;
   }
 }
@@ -124,7 +115,7 @@ export async function streamNvidiaResponse(ws, params) {
 export async function streamKimiResponse(ws, params) {
   const { endpoint, apiKey, model, messages, tools, maxTokens, reasoningEffort, stream } = params;
 
-  ws.send(JSON.stringify({ type: 'streamStart' }));
+  emitStreamStart(ws);
 
   try {
     const { content, toolCalls, usage } = await providers.kimi.streamChat({
@@ -138,21 +129,18 @@ export async function streamKimiResponse(ws, params) {
       stream,
       onEvent: (event) => {
         if (event.type === 'text' && event.delta) {
-          ws.send(JSON.stringify({ type: 'streamChunk', content: event.delta }));
+          emitStreamChunk(ws, event.delta);
         }
       }
     });
 
-    ws.send(JSON.stringify({ type: 'streamEnd' }));
+    emitStreamEnd(ws);
 
     return { content, toolCalls, usage };
   } catch (err) {
     console.error(`[Gateway] Kimi stream error: ${err.message}`);
-    ws.send(JSON.stringify({ type: 'streamEnd' }));
-    ws.send(JSON.stringify({ type: 'error', message: err.message }));
+    emitStreamEnd(ws);
+    emitError(ws, err.message);
     throw err;
   }
 }
-
-// Re-export for backward compatibility
-export { parseRateLimitHeaders } from '../providers/types.js';

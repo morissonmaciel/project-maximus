@@ -9,11 +9,12 @@
  * - Streaming response handling
  * - Rate limit tracking
  *
- * Note: Payload construction lives in messaging/payloads.js
+ * Note: Payload construction lives in services/chat-payloads.js
  * Note: Tool loop execution lives in tools/loops.js
  */
 
 import { ProviderCapabilities, parseRateLimitHeaders } from './types.js';
+import { emitError, emitStreamChunk, emitStreamEnd, emitStreamStart } from '../ws/protocol.js';
 
 export const name = 'claude-code';
 export const supportsTools = ProviderCapabilities.ANTHROPIC.supportsTools;
@@ -22,7 +23,7 @@ export const supportsTools = ProviderCapabilities.ANTHROPIC.supportsTools;
  * Stream chat with Claude Code (OAuth)
  * @param {Object} params
  * @param {Object} params.client - Anthropic SDK client (OAuth configured)
- * @param {Object} params.payload - Pre-built payload from messaging/payloads.js
+ * @param {Object} params.payload - Pre-built payload from services/chat-payloads.js
  * @param {WebSocket} params.ws - WebSocket for streaming
  * @returns {Promise<{finalMessage: Object, rateLimits: Object|null}>}
  */
@@ -31,11 +32,11 @@ export async function streamChat({ client, payload, ws }) {
     let finalMessage = null;
     let rateLimits = null;
 
-    ws.send(JSON.stringify({ type: 'streamStart' }));
+    emitStreamStart(ws);
     const stream = client.messages.stream(payload);
 
     stream.on('text', (text) => {
-      ws.send(JSON.stringify({ type: 'streamChunk', content: text }));
+      emitStreamChunk(ws, text);
     });
 
     stream.on('finalMessage', (message) => {
@@ -43,12 +44,12 @@ export async function streamChat({ client, payload, ws }) {
     });
 
     stream.on('end', () => {
-      ws.send(JSON.stringify({ type: 'streamEnd' }));
+      emitStreamEnd(ws);
       resolve({ finalMessage, rateLimits });
     });
 
     stream.on('error', (err) => {
-      ws.send(JSON.stringify({ type: 'error', message: err.message }));
+      emitError(ws, err.message);
       reject(err);
     });
 

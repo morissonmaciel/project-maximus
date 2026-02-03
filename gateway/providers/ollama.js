@@ -6,11 +6,12 @@
  * - Streaming response handling
  * - Tool call extraction from stream
  * 
- * Note: Payload construction lives in messaging/payloads.js
+ * Note: Payload construction lives in services/chat-payloads.js
  * Note: Tool loop execution lives in tools/loops.js
  */
 
 import { ProviderCapabilities } from './types.js';
+import { emitStreamChunk, emitStreamEnd, emitStreamStart } from '../ws/protocol.js';
 
 export const name = ProviderCapabilities.OLLAMA.name;
 export const supportsTools = ProviderCapabilities.OLLAMA.supportsTools;
@@ -19,12 +20,12 @@ export const supportsTools = ProviderCapabilities.OLLAMA.supportsTools;
  * Stream chat with Ollama
  * @param {Object} params
  * @param {Object} params.client - Ollama SDK client
- * @param {Object} params.payload - Pre-built payload from messaging/payloads.js
+ * @param {Object} params.payload - Pre-built payload from services/chat-payloads.js
  * @param {WebSocket} params.ws - WebSocket for streaming
  * @returns {Promise<{assistantText: string, toolCalls: Array, usage: Object|null}>}
  */
 export async function streamChat({ client, payload, ws }) {
-  ws.send(JSON.stringify({ type: 'streamStart' }));
+  emitStreamStart(ws);
   
   const stream = await client.chat(payload);
   let lastChunk = null;
@@ -37,7 +38,7 @@ export async function streamChat({ client, payload, ws }) {
     
     if (content) {
       assistantText += content;
-      ws.send(JSON.stringify({ type: 'streamChunk', content }));
+      emitStreamChunk(ws, content);
     }
     
     // Ollama may return tool calls in stream
@@ -47,7 +48,7 @@ export async function streamChat({ client, payload, ws }) {
     }
   }
 
-  ws.send(JSON.stringify({ type: 'streamEnd' }));
+  emitStreamEnd(ws);
 
   const usage = lastChunk ? {
     input_tokens: lastChunk.prompt_eval_count ?? null,

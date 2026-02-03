@@ -29,13 +29,13 @@ The dev server runs on port 8080 and proxies WebSocket connections to the gatewa
 
 ## Architecture
 
-The UI is organized into components, state stores, and utilities:
+The UI is organized into components, state stores, and WebSocket utilities:
 
 ```
 src/
-├── components/     # UI components (Header, ChatWindow, etc)
+├── components/     # UI components (Header, MessageItem, etc)
 ├── state/          # @bunnix/redux stores
-├── lib/            # WebSocket client
+├── ws/             # WebSocket client + handlers
 └── styles.css      # Global styles
 ```
 
@@ -74,23 +74,23 @@ const count = store.state.map(s => s.count);
 ```
 
 Stores:
-- `messages.js` - Chat messages and typing state
-- `connection.js` - WebSocket status and provider info
-- `settings.js` - Settings UI state
+- `session.js` - Chat messages and processing state
+- `config.js` - User config snapshot + settings UI state
+- `catalog.js` - Providers/models catalog
 
 ### WebSocket
 
-The WebSocket client in `lib/websocket.js` handles:
+The WebSocket client in `ws/client.js` handles:
 - Connection with auto-reconnect
 - Message sending
 - Event subscription
 
 ```javascript
-import { connect, on, send } from './lib/websocket.js';
+import { connect, on, send } from './ws/client.js';
 
 connect();
 on('streamChunk', (data) => console.log(data.content));
-send({ type: 'chat', messages: [...] });
+send({ type: 'sendMessage', content: '...' });
 ```
 
 ## Adding a Settings Panel
@@ -101,13 +101,14 @@ To add settings for a new provider:
 
 ```javascript
 import Bunnix from '@bunnix/core';
-import { send, settingsStore } from './helpers.js';
+import { send } from '../../ws/client.js';
+import { configStore } from '../../state/config.js';
 
 export function MyProviderPanel() {
-  const apiKey = settingsStore.state.map(s => s.myApiKey);
+  const apiKey = configStore.state.map(s => s.myApiKey);
 
   const save = () => {
-    const key = settingsStore.state.get().myApiKey?.trim();
+    const key = configStore.state.get().myApiKey?.trim();
     if (key) send({ type: 'setMyApiKey', apiKey: key });
   };
 
@@ -115,17 +116,17 @@ export function MyProviderPanel() {
     Bunnix.input({
       type: 'password',
       value: apiKey,
-      input: (e) => settingsStore.setMyApiKey({ value: e.target.value })
+      input: (e) => configStore.setMyApiKey({ value: e.target.value })
     }),
     Bunnix.button({ click: save }, 'Save')
   );
 }
 ```
 
-2. **Add state** in `state/settings.js`:
+2. **Add state** in `state/config.js`:
 
 ```javascript
-export const settingsStore = createStore({
+export const configStore = createStore({
   // ... existing
   myApiKey: ''
 }, {

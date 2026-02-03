@@ -11,8 +11,8 @@
  * - Stream parsing and normalization
  * 
  * NOT Responsibilities:
- * - Payload construction (messaging/payloads.js)
- * - WebSocket event sending (messaging/stream.js)
+ * - Payload construction (services/chat-payloads.js)
+ * - WebSocket event sending (services/chat-stream.js)
  * - Tool execution (tools/loops.js)
  */
 

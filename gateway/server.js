@@ -1260,7 +1260,7 @@ wss.on('connection', (ws) => {
 
 /**
  * Handle chat message
- * Refactored to use providers and messaging subsystems
+ * Refactored to use providers and services subsystems
  */
 async function handleChat(ws, message, configState, messenger, meta = null) {
   const provider = configState.provider;

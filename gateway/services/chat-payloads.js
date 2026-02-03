@@ -1,14 +1,5 @@
 import { TOOL_DEFINITIONS, OLLAMA_TOOL_DEFINITIONS } from '../tools/tools-executer.js';
 
-export function buildMemoryPrompt(chunks) {
-  if (!chunks.length) return '';
-  const lines = chunks.map((chunk, index) => {
-    const header = `# Memory ${index + 1} (${chunk.path}:${chunk.start_line}-${chunk.end_line})`;
-    return `${header}\n${chunk.text}`;
-  });
-  return `The following memory snippets may be relevant:\n\n${lines.join('\n\n')}`;
-}
-
 export function buildOllamaMessages(baseMessages, memoryText, systemPromptText) {
   const systemMessages = [{ role: 'system', content: systemPromptText }];
   if (memoryText) {

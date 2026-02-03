@@ -38,7 +38,7 @@ To add support for a new LLM provider:
 1. Create `providers/<name>.js` implementing the adapter interface
 2. Add configuration defaults in `config/constants.js`
 3. Register in `providers/index.js` and `server.js`
-4. Add a settings panel in `web/src/components/settings/`
+4. Add a settings panel in `web/src/pages/` and register in `web/src/dialogs/SettingsDialog.js`
 
 See existing providers (`anthropic.js`, `kimi.js`) for examples.
 
@@ -132,7 +132,7 @@ Ancestor inheritance: If `/home/user` is authorized, `/home/user/projects` is al
 | `tools/` | Tool definitions and execution |
 | `memory/` | SQLite storage, embeddings, search |
 | `config/` | Settings, state management |
-| `messaging/` | Payload builders, streaming |
+| `services/` | Payload builders, streaming, response parsing |
 
 ## Configuration
 
@@ -154,15 +154,22 @@ Only credentials are persisted. Provider endpoints and defaults are hardcoded.
 The gateway communicates with the web UI via WebSocket:
 
 **Client → Gateway:**
-- `chat` - Send a message
+- `getConfig` - Fetch user config snapshot
+- `getCatalog` - Fetch providers/models catalog
+- `getSession` - Fetch session history
+- `sendMessage` - Send a message
 - `setProvider` - Switch active provider
+- `setModel` - Set preferred model
 - `set*ApiKey` - Configure provider credentials
 - `ping` - Keep-alive
 
 **Gateway → Client:**
+- `config` - User config snapshot
+- `catalog` - Providers/models catalog
+- `session` - Session history
+- `sessionPatch` - Session delta updates
 - `streamStart` / `streamChunk` / `streamEnd` - Streaming response
-- `toolCall` / `toolResult` - Tool execution status
-- `status` - Provider connection status
+- `error` - Error messages
 
 See `server.js` for all message handlers.
 

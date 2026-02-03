@@ -9,10 +9,10 @@ The Web UI is built with **Bunnix**, a lightweight reactive UI framework similar
 ```
 web/
 ├── src/
-│   ├── app.js              # Main app, WebSocket event handlers
+│   ├── app.js              # Main app, UI composition only
 │   ├── components/         # UI components (pure functions)
 │   ├── state/              # @bunnix/redux stores
-│   ├── lib/                # Utilities (WebSocket client)
+│   ├── ws/                 # WebSocket client + handlers
 │   └── styles.css          # Global styles
 ```
 
@@ -20,7 +20,7 @@ web/
 
 - **Bunnix** - Reactive UI framework (components, effects, mounting)
 - **@bunnix/redux** - State management (stores, actions, reactive selectors)
-- **WebSocket** - Real-time communication with gateway
+- **WebSocket** - Real-time communication with gateway (REST-like request/response + streaming)
 - **Webpack** - Build tool with dev server and HMR
 
 ## Component Patterns
@@ -55,7 +55,7 @@ export function ComponentName({ prop1, prop2 }) {
 ### Component Rules
 
 1. **Pure functions** - No side effects in component body
-2. **Use `Bunnix.useEffect()`** for initialization in `app.js` only
+2. **Use `Bunnix.useEffect()`** only in components that need it (WS handlers are in `src/ws/handlers.js`)
 3. **Derive values** from stores using `.map()` for reactivity
 4. **Pass callbacks** as props for child-to-parent communication
 5. **Class names** use kebab-case: `settings-panel`, `modal-actions`
@@ -87,42 +87,35 @@ export const isReady = myStore.state.map(s => s.field1 && s.field2);
 1. **Never mutate state directly** - Always use actions
 2. **Spread previous state** - `({ ...state, field: value })`
 3. **Use `.map()` for derived values** - Creates reactive subscription
-4. **One store per domain** - `messages`, `connection`, `settings`
+4. **One store per domain** - `session`, `config`, `catalog`
 
 ### Existing Stores
 
 | Store | File | Purpose |
 |-------|------|---------|
-| `messagesStore` | `state/messages.js` | Chat messages, typing state |
-| `connectionStore` | `state/connection.js` | WS connection, provider status |
-| `settingsStore` | `state/settings.js` | Settings UI state |
+| `sessionStore` | `state/session.js` | Chat messages, processing state |
+| `configStore` | `state/config.js` | User config snapshot + settings UI state |
+| `catalogStore` | `state/catalog.js` | Providers/models catalog |
 
 ## WebSocket Integration
 
-### Event Handlers in app.js
+### Handlers
 
-Add new message handlers in `app.js` within `Bunnix.useEffect()`:
-
-```javascript
-on('newEventType', (data) => {
-  // Update appropriate store
-  someStore.setSomething({ value: data.value });
-});
-```
+Handlers live in `web/src/ws/handlers.js` and are installed in `web/src/index.js`.
 
 ### Sending Messages
 
 ```javascript
-import { send } from './lib/websocket.js';
+import { send } from './ws/client.js';
 
-send({ type: 'messageType', payload: data });
+send({ type: 'getConfig' });
 ```
 
 ### Common Message Types
 
-Gateway → Client: `pong`, `status`, `streamStart`, `streamChunk`, `streamEnd`, `toolCall`, `toolResult`, `settings`, `providers`
+Gateway → Client: `config`, `catalog`, `session`, `sessionPatch`, `streamStart`, `streamChunk`, `streamEnd`
 
-Client → Gateway: `ping`, `chat`, `getSettings`, `setProvider`, `set*ApiKey`
+Client → Gateway: `getConfig`, `getCatalog`, `getSession`, `sendMessage`, `setProvider`, `setModel`, `set*ApiKey`
 
 ## Styling
 
@@ -153,17 +146,19 @@ Client → Gateway: `ping`, `chat`, `getSettings`, `setProvider`, `set*ApiKey`
 
 ```javascript
 import Bunnix from '@bunnix/core';
-import { send, settingsStore, formatValue } from './helpers.js';
+import { send } from '../../ws/client.js';
+import { configStore } from '../../state/config.js';
+import { formatValue } from '../../utils/helpers.js';
 
 export function MyProviderPanel({ settings }) {
   const providerData = settings?.providers?.myProvider || {};
-  const apiKey = settingsStore.state.map(s => s.myApiKey);
-  const isSaving = settingsStore.state.map(s => s.isSaving);
+  const apiKey = configStore.state.map(s => s.myApiKey);
+  const isSaving = configStore.state.map(s => s.isSaving);
 
   const saveKey = () => {
-    const key = settingsStore.state.get().myApiKey?.trim();
+    const key = configStore.state.get().myApiKey?.trim();
     if (!key) return;
-    settingsStore.setSaving({ value: true });
+    configStore.setSaving({ value: true });
     send({ type: 'setMyApiKey', apiKey: key });
   };
 
@@ -175,7 +170,7 @@ export function MyProviderPanel({ settings }) {
         type: 'password',
         placeholder: 'key-...',
         value: apiKey,
-        input: (e) => settingsStore.setMyApiKey({ value: e.target.value }),
+        input: (e) => configStore.setMyApiKey({ value: e.target.value }),
         keydown: (e) => { if (e.key === 'Enter') saveKey(); }
       }),
       Bunnix.div({ class: 'modal-actions auth-actions' },
@@ -204,10 +199,10 @@ export function MyProviderPanel({ settings }) {
 - File and default export name must be prefixed with `Settings` (e.g., `SettingsGeneralPage` in `web/src/pages/SettingsGeneralPage.js`).
 - `SettingsDialog` is responsible for routing sidebar selections to these pages.
 
-2. **Add state** in `src/state/settings.js`:
+2. **Add state** in `src/state/config.js`:
 
 ```javascript
-export const settingsStore = createStore({
+export const configStore = createStore({
   // ... existing state
   myApiKey: ''
 }, {
@@ -228,14 +223,14 @@ const panels = [
 ];
 ```
 
-4. **Handle response** in `src/app.js`:
+4. **Handle response** in `src/ws/handlers.js`:
 
 ```javascript
 on('apiKeySet', (data) => {
-  settingsStore.setSaving({ value: false });
+  configStore.setSaving({ value: false });
   if (data.success) {
-    settingsStore.resetAuth();
-    settingsStore.setMyApiKey({ value: '' });
+    configStore.resetAuth();
+    configStore.setMyApiKey({ value: '' });
   }
 });
 ```
@@ -272,13 +267,7 @@ export function MyComponent({ title, onAction }) {
 
 ### Adding a New WebSocket Message Handler
 
-1. Add handler in `src/app.js` inside `useEffect`:
-   ```javascript
-   on('newMessageType', (data) => {
-     // Handle message
-   });
-   ```
-
+1. Add handler in `src/ws/handlers.js`
 2. Document in `gateway/README.md` WebSocket protocol section
 
 ### Adding a New Route/View
@@ -291,12 +280,12 @@ The UI is single-page with modals. To add a new view:
 
 ### Modifying the Chat Display
 
-1. **Message rendering** - `src/components/ChatWindow.js`
-2. **Message state** - `src/state/messages.js`
-3. **Message types** handled in `src/app.js`:
+1. **Message rendering** - `src/components/MessageItem.js`
+2. **Message state** - `src/state/session.js`
+3. **Message types** handled in `src/ws/handlers.js`:
    - `streamStart`, `streamChunk`, `streamEnd`
-   - `toolCall`, `toolResult`
-   - `history` - System messages (role: 'system') are filtered from UI display
+   - `session`, `sessionPatch`
+   - System messages (role: 'system') are filtered from UI display
 
 **Note**: System messages are intentionally filtered from the UI in `app.js` as they contain AI context not intended for user visibility (onboarding summaries, compaction summaries, etc.).
 

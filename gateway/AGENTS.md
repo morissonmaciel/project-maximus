@@ -312,33 +312,38 @@ Skills are CLI capabilities documented in `gateway/external-skills/`.
 | **gog** | Google Workspace CLI | gmail, calendar, drive, sheets, docs |
 | **whisper** | Audio transcription | transcribe, speech-to-text, audio |
 
-### Ad-Hoc Communication Subsystem
+### WebSocket Communication Subsystem
 
-The ad-hoc communication subsystem (`gateway/ad-hoc/`) centralizes WebSocket message protocol definitions and messenger classes for gateway -> client communication.
+The WebSocket communication subsystem is split between:
+- `gateway/ad-hoc/` for messenger classes and message type constants
+- `gateway/ws/protocol.js` for all direct `ws.send` emission helpers
+
+All WebSocket events should be emitted through `gateway/ws/protocol.js` or via `ClientMessenger`/`BroadcastMessenger` to keep the protocol consistent.
 
 **Key Components:**
-- `types.js` - Message type constants (`MessageTypes`)
-- `messenger.js` - `ClientMessenger` and `BroadcastMessenger` classes
-- `index.js` - Public API exports
+- `ad-hoc/types.js` - Message type constants (`MessageTypes`)
+- `ad-hoc/messenger.js` - `ClientMessenger` and `BroadcastMessenger` classes
+- `ws/protocol.js` - Emission helpers (`emitStreamStart`, `emitSessionPatch`, etc.)
 
 **Message Types:**
 - Lifecycle: `ping`, `pong`, `status`, `gatewayState`, `reloadRequest`
 - Authentication: `apiKeySet`, `oauthUrl`, `apiKeyStatus`
-- Chat: `chat`, `history`, `reloadHistory`
+- Chat: `sendMessage`, `session`, `sessionPatch`, `reloadHistory`
 - Streaming: `streamStart`, `streamChunk`, `streamEnd`
-- Tools: `toolCall`, `toolResult`
-- Config: `settings`, `providers`, `providerSet`
+- Config: `config`, `catalog`, `providerSet`
 - Memory: `docsList`, `purgeMemoryToken`, `purgeMemoryResult`
 - Errors: `error`
 
 **Usage:**
 ```javascript
 import { ClientMessenger, BroadcastMessenger } from './ad-hoc/index.js';
+import { emitSessionPatch } from './ws/protocol.js';
 
 // Single client
 const messenger = new ClientMessenger(ws);
-messenger.status(config);
-messenger.reloadHistory();
+messenger.config(configSnapshot);
+messenger.catalog(catalogSnapshot);
+emitSessionPatch(ws, { op: 'addMessage', message: { role: 'user', content: 'hi' } });
 
 // Broadcast to all clients
 const broadcast = new BroadcastMessenger(wss);

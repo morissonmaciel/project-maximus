@@ -147,7 +147,7 @@ export function loadAwareness() {
     {
       title: 'Messaging and Tooling Subsystems',
       text:
-        'The messaging logic (payloads, streaming, response parsing) is modularized in `gateway/messaging/`. ' +
+        'The messaging logic (payloads, streaming, response parsing) is modularized in `gateway/services/`. ' +
         'The tooling logic (definitions, execution, guards) is modularized in `gateway/tools/`. ' +
         'This separation ensures clean boundaries between communication with providers and local tool execution capabilities.'
     },
@@ -197,7 +197,7 @@ export function loadAwareness() {
         '`index.js` exports all providers. `anthropic.js`, `ollama.js`, `openai-codex.js`, `kimi.js`, and `nvidia.js` each implement ' +
         'a consistent interface: `streamChat(params)` returns `{content, toolCalls, usage}`, ' +
         '`supportsTools` boolean flag, and `isReady(credentials)` check. ' +
-        'Providers handle only API communication; payload construction is in `messaging/`, ' +
+        'Providers handle only API communication; payload construction is in `services/`, ' +
         'tool execution is in `tools/`, and orchestration is in `server.js`.'
     },
     {
@@ -213,7 +213,7 @@ export function loadAwareness() {
     {
       title: 'Messaging Subsystem',
       text:
-        'The messaging subsystem (`gateway/messaging/`) handles provider-agnostic message processing. ' +
+        'The messaging subsystem (`gateway/services/`) handles provider-agnostic message processing. ' +
         '`payloads.js` builds request payloads for each provider format. ' +
         '`stream.js` orchestrates streaming between providers and WebSocket, sending `streamStart`, ' +
         '`streamChunk`, `streamEnd` events. `responses.js` parses provider responses to extract ' +

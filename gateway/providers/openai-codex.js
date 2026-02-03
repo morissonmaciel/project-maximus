@@ -6,8 +6,8 @@
  * - SSE stream parsing
  * - Tool call extraction from stream
  * 
- * Note: Payload construction lives in messaging/payloads.js
- * Note: WS streaming events are handled by messaging/stream.js
+ * Note: Payload construction lives in services/chat-payloads.js
+ * Note: WS streaming events are handled by services/chat-stream.js
  * Note: Tool loop execution lives in tools/loops.js
  */
 
@@ -204,7 +204,7 @@ export function buildHeaders(credentials) {
  * Stream chat with OpenAI Codex
  * 
  * Note: This function does NOT send WebSocket events directly.
- * It returns the raw stream events via callbacks for messaging/stream.js to handle.
+ * It returns the raw stream events via callbacks for services/chat-stream.js to handle.
  * 
  * @param {Object} params
  * @param {string} params.model

@@ -8,7 +8,7 @@
  * 
  * NOT Responsibilities:
  * - Provider API communication (providers/)
- * - Payload construction (messaging/payloads.js)
+ * - Payload construction (services/chat-payloads.js)
  * - Direct SDK calls (providers/)
  */
 
@@ -23,21 +23,22 @@ import {
   buildNvidiaPayload,
   buildOllamaPayload,
   buildOllamaMessages
-} from '../messaging/payloads.js';
+} from '../services/chat-payloads.js';
 import {
   streamAnthropicResponse,
   streamOllamaResponse,
   streamCodexResponse,
   streamKimiResponse,
   streamNvidiaResponse
-} from '../messaging/stream.js';
+} from '../services/chat-stream.js';
+import { emitError, emitSessionPatch } from '../ws/protocol.js';
 import {
   extractAnthropicText,
   extractAnthropicToolUses,
   extractCodexText,
   extractKimiText,
   extractNvidiaText
-} from '../messaging/responses.js';
+} from '../services/chat-responses.js';
 
 export async function runAnthropicLoop({
   ws,
@@ -107,41 +108,35 @@ export async function runAnthropicLoop({
       const guard = toolGuard.check(execToolName);
       if (!guard.allowed) {
         const failure = normalizeToolFailure(guard.error, { tool: providerToolName, input: toolUse.input });
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `${failure.error} ${failure.recommendation}`
-        }));
+        emitError(ws, `${failure.error} ${failure.recommendation}`);
         toolResults.push({
           type: 'tool_result',
           tool_use_id: toolCallId,
           content: JSON.stringify(failure)
         });
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        emitSessionPatch(ws, {
           op: 'toolStart',
           toolCallId,
           toolName: providerToolName,
           reason: toolUse.input?.reason || null
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        });
+        emitSessionPatch(ws, {
           op: 'toolEnd',
           toolCallId,
           success: false,
           result: failure
-        }));
+        });
         continue;
       }
 
       const reason = toolUse.input?.reason || null;
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolStart',
         toolCallId,
         toolName: providerToolName,
         reason
-      }));
+      });
 
       let result;
       try {
@@ -163,13 +158,12 @@ export async function runAnthropicLoop({
         normalized = normalizeToolSuccess(result);
       }
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolEnd',
         toolCallId,
         success,
         result: normalized
-      }));
+      });
 
       if (memoryStore) {
         memoryStore.ingestText({
@@ -254,24 +248,19 @@ export async function runOpenAICodexLoop({
       const guard = toolGuard.check(execToolName);
       if (!guard.allowed) {
         const failure = normalizeToolFailure(guard.error, { tool: providerToolName, input: call.input });
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `${failure.error} ${failure.recommendation}`
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        emitError(ws, `${failure.error} ${failure.recommendation}`);
+        emitSessionPatch(ws, {
           op: 'toolStart',
           toolCallId,
           toolName: providerToolName,
           reason: call.input?.reason || null
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        });
+        emitSessionPatch(ws, {
           op: 'toolEnd',
           toolCallId,
           success: false,
           result: failure
-        }));
+        });
 
         toolResults.push({
           type: 'tool_result',
@@ -283,13 +272,12 @@ export async function runOpenAICodexLoop({
 
       const reason = call.input?.reason || null;
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolStart',
         toolCallId,
         toolName: providerToolName,
         reason
-      }));
+      });
 
       let execResult;
       try {
@@ -311,13 +299,12 @@ export async function runOpenAICodexLoop({
         normalized = normalizeToolSuccess(execResult);
       }
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolEnd',
         toolCallId,
         success,
         result: normalized
-      }));
+      });
 
       if (memoryStore) {
         memoryStore.ingestText({
@@ -405,24 +392,19 @@ export async function runKimiLoop({
       const guard = toolGuard.check(execToolName);
       if (!guard.allowed) {
         const failure = normalizeToolFailure(guard.error, { tool: providerToolName, input: call.input });
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `${failure.error} ${failure.recommendation}`
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        emitError(ws, `${failure.error} ${failure.recommendation}`);
+        emitSessionPatch(ws, {
           op: 'toolStart',
           toolCallId,
           toolName: providerToolName,
           reason: call.input?.reason || null
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        });
+        emitSessionPatch(ws, {
           op: 'toolEnd',
           toolCallId,
           success: false,
           result: failure
-        }));
+        });
 
         toolResults.push({
           role: 'tool',
@@ -434,13 +416,12 @@ export async function runKimiLoop({
 
       const reason = call.input?.reason || null;
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolStart',
         toolCallId,
         toolName: providerToolName,
         reason
-      }));
+      });
 
       let execResult;
       try {
@@ -462,13 +443,12 @@ export async function runKimiLoop({
         normalized = normalizeToolSuccess(execResult);
       }
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolEnd',
         toolCallId,
         success,
         result: normalized
-      }));
+      });
 
       if (memoryStore) {
         memoryStore.ingestText({
@@ -553,24 +533,19 @@ export async function runNvidiaLoop({
       const guard = toolGuard.check(execToolName);
       if (!guard.allowed) {
         const failure = normalizeToolFailure(guard.error, { tool: providerToolName, input: call.input });
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `${failure.error} ${failure.recommendation}`
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        emitError(ws, `${failure.error} ${failure.recommendation}`);
+        emitSessionPatch(ws, {
           op: 'toolStart',
           toolCallId,
           toolName: providerToolName,
           reason: call.input?.reason || null
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        });
+        emitSessionPatch(ws, {
           op: 'toolEnd',
           toolCallId,
           success: false,
           result: failure
-        }));
+        });
 
         toolResults.push({
           role: 'tool',
@@ -582,13 +557,12 @@ export async function runNvidiaLoop({
 
       const reason = call.input?.reason || null;
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolStart',
         toolCallId,
         toolName: providerToolName,
         reason
-      }));
+      });
 
       let execResult;
       try {
@@ -610,13 +584,12 @@ export async function runNvidiaLoop({
         normalized = normalizeToolSuccess(execResult);
       }
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolEnd',
         toolCallId,
         success,
         result: normalized
-      }));
+      });
 
       if (memoryStore) {
         memoryStore.ingestText({
@@ -685,24 +658,19 @@ export async function runOllamaLoop({
       const guard = toolGuard.check(execToolName);
       if (!guard.allowed) {
         const failure = normalizeToolFailure(guard.error, { tool: providerToolName, input: call.input });
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `${failure.error} ${failure.recommendation}`
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        emitError(ws, `${failure.error} ${failure.recommendation}`);
+        emitSessionPatch(ws, {
           op: 'toolStart',
           toolCallId,
           toolName: providerToolName,
           reason: call.input?.reason || null
-        }));
-        ws.send(JSON.stringify({
-          type: 'sessionPatch',
+        });
+        emitSessionPatch(ws, {
           op: 'toolEnd',
           toolCallId,
           success: false,
           result: failure
-        }));
+        });
         toolMessages.push({
           role: 'tool',
           name: providerToolName,
@@ -713,13 +681,12 @@ export async function runOllamaLoop({
 
       const reason = call.input?.reason || null;
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolStart',
         toolCallId,
         toolName: providerToolName,
         reason
-      }));
+      });
 
       let result;
       try {
@@ -741,13 +708,12 @@ export async function runOllamaLoop({
         normalized = normalizeToolSuccess(result);
       }
 
-      ws.send(JSON.stringify({
-        type: 'sessionPatch',
+      emitSessionPatch(ws, {
         op: 'toolEnd',
         toolCallId,
         success,
         result: normalized
-      }));
+      });
 
       if (memoryStore) {
         memoryStore.ingestText({
