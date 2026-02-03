@@ -1,0 +1,92 @@
+/* Markdown styling */
+.message .content p {
+  margin: 0 0 var(--base-padding) 0;
+}
+
+.message .content p:last-child {
+  margin-bottom: 0;
+}
+
+.message .content code {
+  background: var(--alternate-background-color);
+  padding: calc(var(--base-padding) * 0.35) calc(var(--base-padding) * 0.5);
+  border-radius: calc(var(--base-radius) * 0.5);
+  font-family: var(--font-mono);
+}
+
+.message .content pre {
+  background: var(--alternate-background-color);
+  padding: var(--base-padding);
+  border-radius: var(--base-radius);
+  margin: var(--base-margin) 0;
+  font-family: var(--font-mono);
+  overflow-x: auto;
+}
+
+.message .content pre code {
+  background: none;
+  padding: 0;
+}
+
+.message .content ol,
+.message .content ul {
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--base-padding);
+  margin: var(--base-margin) 0;
+  gap: var(--base-gap);
+}
+
+.message .content li {
+  line-height: 1.5;
+}
+
+.message .content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message .content a:hover {
+  text-decoration: none;
+}
+
+.message .content blockquote {
+  margin: var(--base-margin) 0;
+  padding-left: var(--base-padding);
+  border-left: 3px solid var(--border-color);
+  color: var(--color-secondary);
+}
+
+.message .content h1,
+.message .content h2,
+.message .content h3,
+.message .content h4 {
+  margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+.message .content h1 { font-size: var(--text-lg); }
+.message .content h2 { font-size: var(--text-base); }
+.message .content h3 { font-size: var(--text-base); }
+.message .content h4 {  }
+
+.message .content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--base-margin) 0;
+
+}
+
+.message .content th,
+.message .content td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.message .content th {
+  background: var(--alternate-background-color);
+  font-weight: var(--weight-medium);
+}

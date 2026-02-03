@@ -120,36 +120,6 @@
           "command": "node whisper_script.js /path/to/audio.mp3 --language pt"
         }
       ]
-    },
-    {
-      "id": "maximus_pokedex",
-      "name": "Maximus Pokedex",
-      "description": "Habilidade para consultar informações de Pokémons via PokéAPI e fornecer dados sobre nomes e tipos quando solicitados.",
-      "keywords": [
-        "pokemon",
-        "pokeapi",
-        "pokedex",
-        "maximus"
-      ],
-      "docPath": "skills/maximus_pokedex/SKILL.md",
-      "entrypoints": []
-    },
-    {
-      "id": "maximus-enciclopedico-paises",
-      "name": "Maximus Enciclopédico Países",
-      "description": "Consulta informações sobre países utilizando a API Rest Countries.",
-      "keywords": [
-        "país",
-        "restcountries",
-        "info",
-        "capital",
-        "população",
-        "moeda",
-        "fronteira",
-        "idioma"
-      ],
-      "docPath": "skills/maximus-enciclopedico-paises/SKILL.md",
-      "entrypoints": []
     }
   ]
 }

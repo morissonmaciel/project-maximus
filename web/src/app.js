@@ -1,11 +1,7 @@
 import Bunnix from '@bunnix/core';
-import { Header } from './design-system/navigation/index.js';
-import { ChatPage } from './pages/index.js';
-import { SettingsModal, ProviderSelector, AuthDialog, NotificationDialog, ModelSelector } from './dialogs/index.js';
-import './styles.css';
-import './dialogs/NotificationDialog.css';
-
-const { div } = Bunnix;
+import { Container, Dialog, NavigationBar, Text } from '@bunnix/components';
+import { Header } from './components/Header.js';
+import Chat from './ChatView.js';
 
 /**
  * Request notification permission on first user interaction
@@ -24,13 +20,13 @@ document.addEventListener('click', requestNotificationPermission, { once: true }
  * Handles UI composition only - WebSocket handlers are in ad-hoc/ folder
  */
 export function App() {
-  return div({ class: 'app' },
-    Header(),
-    ChatPage(),
-    ProviderSelector(),
-    SettingsModal(),
-    AuthDialog(),
-    NotificationDialog(),
-    ModelSelector()
+  return (
+    Container({ type: "main" },
+      Dialog(),
+      Header(),
+      Container({ type: "content" },
+        Chat(),
+      ),
+    )
   );
 }

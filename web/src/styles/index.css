@@ -1,0 +1,52 @@
+@import './markdown-styling.css';
+
+:root {
+    --accent-color: black;
+}
+
+@media(prefers-color-scheme: dark) {
+  :root {
+    --accent-color: #666666;
+  }
+}
+
+.main-logo {
+    width: 46px;
+    height: 46px;
+    aspect-ratio: 1/1;
+}
+
+.message {
+  align-items: flex-start;
+  margin: calc(6 * var(--base-margin)) 0;
+  font-size: 0.9rem;
+}
+
+.message.user {
+  flex-direction: row-reverse;
+}
+
+.message .avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  border-radius: 50%;
+  border: 1px dashed var(--color-primary);
+  background-color: var(--alternate-background-color);
+  aspect-ratio: 1/1;
+}
+
+.message .content {
+  margin-top: calc(2 * var(--base-margin));
+  max-width: calc(100% - 120px);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.message.user .content {
+  text-align: right;
+}

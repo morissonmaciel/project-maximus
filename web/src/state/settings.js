@@ -15,36 +15,36 @@ export const settingsStore = createStore({
   isOpen: false,
   activePanel: 'anthropic', // 'anthropic', 'openai-codex', 'kimi', 'nvidia', 'ollama', 'web', 'memory'
   authTab: 'apikey', // 'apikey', 'oauth'
-  
+
   // OAuth state
   oauthStep: 1, // 1 or 2
   oauthUrl: null,
   oauthCode: '',
-  
+
   // Codex OAuth state
   codexOauthStep: 1,
   codexOauthUrl: null,
   codexOauthCode: '',
-  
+
   // API Key inputs
   apiKey: '',
   kimiApiKey: '',
   nvidiaApiKey: '',
   braveApiKey: '',
-  
+
   // Settings data from gateway
   settings: null,
   providers: null,
   docs: [],
-  
+
   // Loading states
   isSaving: false,
   isStartingOAuth: false,
   isCompletingOAuth: false,
 }, {
   open: (state) => ({ ...state, isOpen: true }),
-  close: (state) => ({ 
-    ...state, 
+  close: (state) => ({
+    ...state,
     isOpen: false,
     oauthStep: 1,
     codexOauthStep: 1,
@@ -54,36 +54,36 @@ export const settingsStore = createStore({
     isStartingOAuth: false,
     isCompletingOAuth: false
   }),
-  
+
   setPanel: (state, { panel }) => ({ ...state, activePanel: panel }),
   setAuthTab: (state, { tab }) => ({ ...state, authTab: tab }),
-  
+
   // OAuth
   setOAuthStep: (state, { step }) => ({ ...state, oauthStep: step }),
   setOAuthUrl: (state, { url }) => ({ ...state, oauthUrl: url, oauthStep: 2 }),
   setOAuthCode: (state, { code }) => ({ ...state, oauthCode: code }),
-  
+
   // Codex OAuth
   setCodexOAuthStep: (state, { step }) => ({ ...state, codexOauthStep: step }),
   setCodexOAuthUrl: (state, { url }) => ({ ...state, codexOauthUrl: url, codexOauthStep: 2 }),
   setCodexOAuthCode: (state, { code }) => ({ ...state, codexOauthCode: code }),
-  
+
   // Inputs
   setApiKey: (state, { value }) => ({ ...state, apiKey: value }),
   setKimiApiKey: (state, { value }) => ({ ...state, kimiApiKey: value }),
   setNvidiaApiKey: (state, { value }) => ({ ...state, nvidiaApiKey: value }),
   setBraveApiKey: (state, { value }) => ({ ...state, braveApiKey: value }),
-  
+
   // Data
   setSettings: (state, { settings }) => ({ ...state, settings }),
   setProviders: (state, { providers }) => ({ ...state, providers }),
   setDocs: (state, { docs }) => ({ ...state, docs }),
-  
+
   // Loading states
   setSaving: (state, { value }) => ({ ...state, isSaving: value }),
   setStartingOAuth: (state, { value }) => ({ ...state, isStartingOAuth: value }),
   setCompletingOAuth: (state, { value }) => ({ ...state, isCompletingOAuth: value }),
-  
+
   // Reset auth panels
   resetAuth: (state) => ({
     ...state,
@@ -118,6 +118,11 @@ export function openSettings() {
   send({ type: 'getSettings' });
   send({ type: 'getProviders' });
   send({ type: 'getDocs' });
+}
+
+export function updateProviders() {
+  send({ type: 'getSettings' });
+  send({ type: 'getProviders' });
 }
 
 export function closeSettings() {

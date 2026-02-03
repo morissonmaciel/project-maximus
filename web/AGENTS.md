@@ -198,6 +198,12 @@ export function MyProviderPanel({ settings }) {
 }
 ```
 
+## Settings Pages
+
+- All settings pages must live in `web/src/pages`.
+- File and default export name must be prefixed with `Settings` (e.g., `SettingsGeneralPage` in `web/src/pages/SettingsGeneralPage.js`).
+- `SettingsDialog` is responsible for routing sidebar selections to these pages.
+
 2. **Add state** in `src/state/settings.js`:
 
 ```javascript

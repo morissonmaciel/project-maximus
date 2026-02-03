@@ -1,0 +1,85 @@
+/* Design System Tokens */
+@import './variables.css';
+
+/* Primitive Components */
+@import './Button.css';
+@import './Input.css';
+@import './Card.css';
+@import './Badge.css';
+@import './Table.css';
+@import './Callout.css';
+@import './ProgressBar.css';
+
+/* Navigation Components */
+@import './Header.css';
+@import './Sidebar.css';
+
+/* Composable Components */
+@import './MessageItem.css';
+@import './StatusBar.css';
+
+/* Page Components */
+@import './chat.css';
+
+/* Layout Components */
+@import './ChatWindow.css';
+@import './InputArea.css';
+
+/* Dialog Components */
+@import './ProviderSelector.css';
+@import './ModelSelector.css';
+@import './SettingsModal.css';
+@import './AuthDialog.css';
+@import './NotificationDialog.css';
+
+/* Settings Panel Components */
+@import './AnthropicPanel.css';
+@import './ClaudeCodePanel.css';
+@import './OpenAICodexPanel.css';
+@import './KimiPanel.css';
+@import './NvidiaPanel.css';
+@import './OllamaPanel.css';
+@import './WebPanel.css';
+@import './MemoryPanel.css';
+
+/* Base Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--action-primary);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+
+/* App container - prevent double scrollbars */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}

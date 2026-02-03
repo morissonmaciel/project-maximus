@@ -430,15 +430,15 @@ if (memoryStore?.getLatestProviderStatsAnySession) {
       if (latest) {
         if (latest.usage) {
           runtimeStats[statsKey].usage = latest.usage;
-          console.log(`[Gateway] Loaded ${provider} usage from previous session:`, latest.usage);
+          console.log(`[Gateway] Loaded ${provider} usage from previous session`);
         }
         if (latest.limits) {
           runtimeStats[statsKey].limits = latest.limits;
-          console.log(`[Gateway] Loaded ${provider} limits from previous session:`, latest.limits);
+          console.log(`[Gateway] Loaded ${provider} limits from previous session`);
         }
         if (latest.accumulatedUsage) {
           runtimeStats[statsKey].accumulatedUsage = latest.accumulatedUsage;
-          console.log(`[Gateway] Loaded ${provider} accumulated usage:`, latest.accumulatedUsage);
+          console.log(`[Gateway] Loaded ${provider} accumulated usage from previous session`);
         }
       }
     } catch (err) {
@@ -644,6 +644,7 @@ wss.on('connection', (ws) => {
         'setKimiApiKey',
         'setNvidiaApiKey',
         'setProvider',
+        'setModel',
         'setOllamaModel',
         'setBraveApiKey',
         'startOAuthFlow',
@@ -1154,13 +1155,16 @@ wss.on('connection', (ws) => {
         }
 
         case 'setModel': {
-          const { model, provider: targetProvider } = message;
+          const model = message.model || message.modelId;
+          const targetProvider = message.provider || message.providerId;
           if (!model) {
+            console.warn('[Gateway] setModel rejected: missing model');
             messenger.error('Model is required');
             break;
           }
           const providerId = targetProvider || configState.provider;
           if (!providerId) {
+            console.warn('[Gateway] setModel rejected: missing provider');
             messenger.error('No provider selected');
             break;
           }
@@ -1168,6 +1172,7 @@ wss.on('connection', (ws) => {
           // Validate provider and model
           const validation = config.validateProviderAndModel(providerId, model);
           if (!validation.valid) {
+            console.warn(`[Gateway] setModel rejected: ${validation.error || 'invalid model selection'}`);
             messenger.notification(
               'Invalid Model Selection',
               validation.error || 'The selected model is not supported by this provider.',
