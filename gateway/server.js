@@ -115,6 +115,66 @@ async function triggerCronMessage(sessionId, content, meta = {}) {
   await handleChat(ws, { type: 'chat', messages: [{ role: 'user', content }] }, configState, messenger, meta);
 }
 
+function buildRuntimeState(ws) {
+  const runtimeState = {
+    lastAnthropicUsage: runtimeStats.anthropic.usage,
+    lastAnthropicAccumulatedUsage: runtimeStats.anthropic.accumulatedUsage,
+    lastAnthropicModel: runtimeStats.anthropic.model,
+    lastAnthropicLimits: runtimeStats.anthropic.limits,
+    lastAnthropicRateLimits: runtimeStats.anthropic.rateLimits,
+    lastClaudeCodeUsage: runtimeStats.claudeCode.usage,
+    lastClaudeCodeAccumulatedUsage: runtimeStats.claudeCode.accumulatedUsage,
+    lastClaudeCodeModel: runtimeStats.claudeCode.model,
+    lastClaudeCodeLimits: runtimeStats.claudeCode.limits,
+    lastClaudeCodeRateLimits: runtimeStats.claudeCode.rateLimits,
+    lastOpenAICodexUsage: runtimeStats.openaiCodex.usage,
+    lastOpenAICodexAccumulatedUsage: runtimeStats.openaiCodex.accumulatedUsage,
+    lastOpenAICodexModel: runtimeStats.openaiCodex.model,
+    lastOpenAICodexLimits: runtimeStats.openaiCodex.limits,
+    lastKimiUsage: runtimeStats.kimi.usage,
+    lastKimiAccumulatedUsage: runtimeStats.kimi.accumulatedUsage,
+    lastKimiModel: runtimeStats.kimi.model,
+    lastKimiLimits: runtimeStats.kimi.limits,
+    lastNvidiaUsage: runtimeStats.nvidia.usage,
+    lastNvidiaAccumulatedUsage: runtimeStats.nvidia.accumulatedUsage,
+    lastNvidiaModel: runtimeStats.nvidia.model,
+    lastNvidiaLimits: runtimeStats.nvidia.limits,
+    lastOllamaUsage: runtimeStats.ollama.usage,
+    lastOllamaAccumulatedUsage: runtimeStats.ollama.accumulatedUsage,
+    lastOllamaStatus: config.getLastOllamaStatus()
+  };
+
+  if (memoryStore?.getLatestProviderStats) {
+    const sessionId = ws.sessionId;
+    const mergeIfMissing = (provider, usageKey, limitsKey, accumulatedKey) => {
+      const latest = memoryStore.getLatestProviderStats(sessionId, provider);
+      if (latest) {
+        if (!runtimeState[usageKey] && latest.usage) runtimeState[usageKey] = latest.usage;
+        if (!runtimeState[limitsKey] && latest.limits) runtimeState[limitsKey] = latest.limits;
+        if (!runtimeState[accumulatedKey] && latest.accumulatedUsage) runtimeState[accumulatedKey] = latest.accumulatedUsage;
+      }
+      const needsUsage = !runtimeState[usageKey];
+      const limitsValue = runtimeState[limitsKey];
+      const needsCodexLimits = provider === 'openai-codex' && (!limitsValue || (!limitsValue.daily && !limitsValue.weekly));
+      const needsLimits = !limitsValue || needsCodexLimits;
+      if (!needsUsage && !needsLimits) return;
+      if (!memoryStore.getLatestProviderStatsAnySession) return;
+      const latestAny = memoryStore.getLatestProviderStatsAnySession(provider);
+      if (!latestAny) return;
+      if (!runtimeState[usageKey] && latestAny.usage) runtimeState[usageKey] = latestAny.usage;
+      if (!runtimeState[limitsKey] && latestAny.limits) runtimeState[limitsKey] = latestAny.limits;
+    };
+    mergeIfMissing('anthropic', 'lastAnthropicUsage', 'lastAnthropicLimits', 'lastAnthropicAccumulatedUsage');
+    mergeIfMissing('claude-code', 'lastClaudeCodeUsage', 'lastClaudeCodeLimits', 'lastClaudeCodeAccumulatedUsage');
+    mergeIfMissing('openai-codex', 'lastOpenAICodexUsage', 'lastOpenAICodexLimits', 'lastOpenAICodexAccumulatedUsage');
+    mergeIfMissing('kimi', 'lastKimiUsage', 'lastKimiLimits', 'lastKimiAccumulatedUsage');
+    mergeIfMissing('nvidia', 'lastNvidiaUsage', 'lastNvidiaLimits', 'lastNvidiaAccumulatedUsage');
+    mergeIfMissing('ollama', 'lastOllamaUsage', 'lastOllamaUsage', 'lastOllamaAccumulatedUsage');
+  }
+
+  return runtimeState;
+}
+
 /**
  * Summarize text using the active provider
  * @param {string} text - Text to summarize
@@ -462,10 +522,17 @@ console.log(`[Gateway] WebSocket server running on ws://localhost:${PORT}`);
 // Create broadcast messenger for sending messages to all clients
 const broadcastMessenger = new BroadcastMessenger(wss);
 
-// Status helpers
-function sendStatus(ws) {
+// Snapshot helpers
+function sendConfig(ws) {
   const messenger = new ClientMessenger(ws);
-  messenger.status(config.buildStatusSnapshot({ lastOllamaStatus: config.getLastOllamaStatus() }));
+  const runtimeState = buildRuntimeState(ws);
+  messenger.config(config.buildConfigSnapshot(runtimeState));
+}
+
+function sendCatalog(ws) {
+  const messenger = new ClientMessenger(ws);
+  const runtimeState = buildRuntimeState(ws);
+  messenger.catalog(config.buildCatalogSnapshot(runtimeState));
 }
 
 function setGatewayState(state, message) {
@@ -617,23 +684,7 @@ wss.on('connection', (ws) => {
 
   (async () => {
     await config.refreshOllamaStatus();
-    sendStatus(ws);
     messenger.gatewayState(gatewayState);
-
-    if (memoryStore) {
-      try {
-        const history = memoryStore.listMessages(ws.sessionId) || [];
-        if (history.length) {
-          messenger.history(history.map((row) => ({
-            role: row.role,
-            content: row.content,
-            meta: row.meta
-          })));
-        }
-      } catch (err) {
-        // ignore history load failures
-      }
-    }
   })();
 
   ws.on('message', async (data) => {
@@ -660,6 +711,36 @@ wss.on('connection', (ws) => {
           messenger.pong(config.buildStatusSnapshot({ lastOllamaStatus: config.getLastOllamaStatus() }));
           break;
 
+        case 'getConfig': {
+          sendConfig(ws);
+          break;
+        }
+
+        case 'getCatalog': {
+          await config.refreshOllamaStatus();
+          sendCatalog(ws);
+          break;
+        }
+
+        case 'getSession': {
+          if (memoryStore) {
+            try {
+              const history = memoryStore.listMessages(ws.sessionId) || [];
+              messenger.session({
+                sessionId: ws.sessionId,
+                messages: history.map((row) => ({
+                  role: row.role,
+                  content: row.content,
+                  meta: row.meta
+                }))
+              });
+            } catch (err) {
+              messenger.error('Failed to load session');
+            }
+          }
+          break;
+        }
+
         case 'requestReload':
           sendReloadRequest(message.message || 'Please reload the UI to continue.');
           break;
@@ -676,7 +757,7 @@ wss.on('connection', (ws) => {
                 config.updateProvider('anthropic');
             }
             messenger.apiKeySet(true, 'anthropic');
-            sendStatus(ws);
+            sendConfig(ws);
           } else if (keyType === 'oauth') {
             messenger.error('OAuth token detected. Use the OAuth tab to authenticate.');
           } else {
@@ -710,7 +791,7 @@ wss.on('connection', (ws) => {
             config.updateProvider('kimi');
           }
           messenger.apiKeySet(true, 'kimi');
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 
@@ -729,7 +810,7 @@ wss.on('connection', (ws) => {
             config.updateProvider('nvidia');
           }
           messenger.apiKeySet(true, 'nvidia');
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 
@@ -809,7 +890,7 @@ wss.on('connection', (ws) => {
             pendingOAuth = null;
             console.log('[Gateway] OAuth configured successfully');
             messenger.apiKeySet(true, providerToAuth);
-            sendStatus(ws);
+            sendConfig(ws);
           } catch (err) {
             console.error('[Gateway] OAuth failed:', err.message);
             messenger.error(err.message);
@@ -831,7 +912,7 @@ wss.on('connection', (ws) => {
           }
 
           messenger.credentialsCleared(providerToClear);
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 
@@ -851,7 +932,7 @@ wss.on('connection', (ws) => {
           }
 
           messenger.credentialsCleared(providerToClear);
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 
@@ -862,6 +943,17 @@ wss.on('connection', (ws) => {
         case 'chat':
           await handleChat(ws, message, configState, messenger);
           break;
+
+        case 'sendMessage': {
+          const content = message.content;
+          await handleChat(
+            ws,
+            { type: 'chat', messages: [{ role: 'user', content }], content },
+            configState,
+            messenger
+          );
+          break;
+        }
 
         case 'authResponse': {
           const { requestId, authorized, reason } = message;
@@ -917,7 +1009,7 @@ wss.on('connection', (ws) => {
                 await config.refreshOllamaStatus();
             }
             messenger.providerSet(nextProvider);
-            sendStatus(ws);
+            sendConfig(ws);
           } catch (err) {
             messenger.error(err.message);
           }
@@ -932,6 +1024,7 @@ wss.on('connection', (ws) => {
           }
           config.updateSystemConfig({ web: { search: { brave_api_key: apiKey } } });
           messenger.braveApiKeySet(true);
+          sendConfig(ws);
           break;
         }
 
@@ -1061,66 +1154,13 @@ wss.on('connection', (ws) => {
               }
           });
           messenger.ollamaModelSet(true, model);
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 
         case 'getSettings': {
           await config.refreshOllamaStatus();
-          const runtimeState = {
-            lastAnthropicUsage: runtimeStats.anthropic.usage,
-            lastAnthropicAccumulatedUsage: runtimeStats.anthropic.accumulatedUsage,
-            lastAnthropicModel: runtimeStats.anthropic.model,
-            lastAnthropicLimits: runtimeStats.anthropic.limits,
-            lastAnthropicRateLimits: runtimeStats.anthropic.rateLimits,
-            lastClaudeCodeUsage: runtimeStats.claudeCode.usage,
-            lastClaudeCodeAccumulatedUsage: runtimeStats.claudeCode.accumulatedUsage,
-            lastClaudeCodeModel: runtimeStats.claudeCode.model,
-            lastClaudeCodeLimits: runtimeStats.claudeCode.limits,
-            lastClaudeCodeRateLimits: runtimeStats.claudeCode.rateLimits,
-            lastOpenAICodexUsage: runtimeStats.openaiCodex.usage,
-            lastOpenAICodexAccumulatedUsage: runtimeStats.openaiCodex.accumulatedUsage,
-            lastOpenAICodexModel: runtimeStats.openaiCodex.model,
-            lastOpenAICodexLimits: runtimeStats.openaiCodex.limits,
-            lastKimiUsage: runtimeStats.kimi.usage,
-            lastKimiAccumulatedUsage: runtimeStats.kimi.accumulatedUsage,
-            lastKimiModel: runtimeStats.kimi.model,
-            lastKimiLimits: runtimeStats.kimi.limits,
-            lastNvidiaUsage: runtimeStats.nvidia.usage,
-            lastNvidiaAccumulatedUsage: runtimeStats.nvidia.accumulatedUsage,
-            lastNvidiaModel: runtimeStats.nvidia.model,
-            lastNvidiaLimits: runtimeStats.nvidia.limits,
-            lastOllamaUsage: runtimeStats.ollama.usage,
-            lastOllamaAccumulatedUsage: runtimeStats.ollama.accumulatedUsage,
-            lastOllamaStatus: config.getLastOllamaStatus()
-          };
-          if (memoryStore?.getLatestProviderStats) {
-            const sessionId = ws.sessionId;
-            const mergeIfMissing = (provider, usageKey, limitsKey, accumulatedKey) => {
-              const latest = memoryStore.getLatestProviderStats(sessionId, provider);
-              if (latest) {
-                if (!runtimeState[usageKey] && latest.usage) runtimeState[usageKey] = latest.usage;
-                if (!runtimeState[limitsKey] && latest.limits) runtimeState[limitsKey] = latest.limits;
-                if (!runtimeState[accumulatedKey] && latest.accumulatedUsage) runtimeState[accumulatedKey] = latest.accumulatedUsage;
-              }
-              const needsUsage = !runtimeState[usageKey];
-              const limitsValue = runtimeState[limitsKey];
-              const needsCodexLimits = provider === 'openai-codex' && (!limitsValue || (!limitsValue.daily && !limitsValue.weekly));
-              const needsLimits = !limitsValue || needsCodexLimits;
-              if (!needsUsage && !needsLimits) return;
-              if (!memoryStore.getLatestProviderStatsAnySession) return;
-              const latestAny = memoryStore.getLatestProviderStatsAnySession(provider);
-              if (!latestAny) return;
-              if (!runtimeState[usageKey] && latestAny.usage) runtimeState[usageKey] = latestAny.usage;
-              if (!runtimeState[limitsKey] && latestAny.limits) runtimeState[limitsKey] = latestAny.limits;
-            };
-            mergeIfMissing('anthropic', 'lastAnthropicUsage', 'lastAnthropicLimits', 'lastAnthropicAccumulatedUsage');
-            mergeIfMissing('claude-code', 'lastClaudeCodeUsage', 'lastClaudeCodeLimits', 'lastClaudeCodeAccumulatedUsage');
-            mergeIfMissing('openai-codex', 'lastOpenAICodexUsage', 'lastOpenAICodexLimits', 'lastOpenAICodexAccumulatedUsage');
-            mergeIfMissing('kimi', 'lastKimiUsage', 'lastKimiLimits', 'lastKimiAccumulatedUsage');
-            mergeIfMissing('nvidia', 'lastNvidiaUsage', 'lastNvidiaLimits', 'lastNvidiaAccumulatedUsage');
-            mergeIfMissing('ollama', 'lastOllamaUsage', 'lastOllamaUsage', 'lastOllamaAccumulatedUsage');
-          }
+          const runtimeState = buildRuntimeState(ws);
           const settingsPayload = config.buildSettingsSnapshot(runtimeState);
           messenger.settings(settingsPayload);
           break;
@@ -1197,7 +1237,7 @@ wss.on('connection', (ws) => {
           }
 
           messenger.modelSet(true, model, providerId);
-          sendStatus(ws);
+          sendConfig(ws);
           break;
         }
 

@@ -1,13 +1,12 @@
 import Bunnix, { useMemo } from "@bunnix/core";
 import { HStack, ProgressBar, Table, Text, VStack } from "@bunnix/components";
-import { settings } from "../state/settings";
+import { providersConfig } from "../state/config";
 import { formatRemainingTime } from "../utils/datetime-helpers";
 
 export function ProviderLimitsPanel({ providerId }) {
-  const provider = useMemo([settings, providerId], (sett, id) => {
-    if (!sett) return null;
-    if (!sett.providers) return null;
-    return sett.providers[id];
+  const provider = useMemo([providersConfig, providerId], (cfg, id) => {
+    if (!cfg) return null;
+    return cfg[id] || null;
   });
 
   const limits = useMemo([provider], (prov) => {

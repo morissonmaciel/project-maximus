@@ -310,3 +310,171 @@ export function buildSettingsSnapshot(configState, runtimeState, providersConfig
         }
     };
 }
+
+export function buildConfigSnapshot(configState, runtimeState) {
+  const {
+    lastAnthropicUsage,
+    lastAnthropicModel,
+    lastAnthropicLimits,
+    lastAnthropicRateLimits,
+    lastAnthropicAccumulatedUsage,
+    lastClaudeCodeUsage,
+    lastClaudeCodeModel,
+    lastClaudeCodeLimits,
+    lastClaudeCodeRateLimits,
+    lastClaudeCodeAccumulatedUsage,
+    lastOpenAICodexUsage,
+    lastOpenAICodexModel,
+    lastOpenAICodexLimits,
+    lastOpenAICodexAccumulatedUsage,
+    lastKimiUsage,
+    lastKimiModel,
+    lastKimiLimits,
+    lastKimiAccumulatedUsage,
+    lastNvidiaUsage,
+    lastNvidiaModel,
+    lastNvidiaLimits,
+    lastNvidiaAccumulatedUsage,
+    lastOllamaUsage,
+    lastOllamaAccumulatedUsage
+  } = runtimeState;
+
+  return {
+    currentProvider: configState.provider,
+    currentModel: configState.currentModel || null,
+    providers: {
+      anthropic: {
+        configured: !!configState.anthropicCredentials,
+        authType: configState.anthropicCredentials?.type || null,
+        model: lastAnthropicModel,
+        preferredModel: configState.anthropicPreferredModel,
+        usage: lastAnthropicUsage,
+        accumulatedUsage: lastAnthropicAccumulatedUsage || null,
+        limits: {
+          maxTokens: lastAnthropicLimits.maxTokens,
+          rate: lastAnthropicRateLimits
+        }
+      },
+      'claude-code': {
+        configured: !!configState.claudeCodeCredentials,
+        authType: configState.claudeCodeCredentials?.type || null,
+        model: lastClaudeCodeModel,
+        preferredModel: configState.claudeCodePreferredModel,
+        usage: lastClaudeCodeUsage,
+        accumulatedUsage: lastClaudeCodeAccumulatedUsage || null,
+        limits: {
+          maxTokens: lastClaudeCodeLimits.maxTokens,
+          rate: lastClaudeCodeRateLimits
+        }
+      },
+      'openai-codex': {
+        configured: !!configState.openaiCodexCredentials,
+        model: lastOpenAICodexModel,
+        preferredModel: configState.openaiCodexPreferredModel,
+        usage: lastOpenAICodexUsage,
+        accumulatedUsage: lastOpenAICodexAccumulatedUsage || null,
+        limits: lastOpenAICodexLimits || null
+      },
+      kimi: {
+        configured: !!configState.kimiCredentials,
+        model: lastKimiModel,
+        preferredModel: configState.kimiPreferredModel,
+        usage: lastKimiUsage,
+        accumulatedUsage: lastKimiAccumulatedUsage || null,
+        limits: {
+          maxTokens: lastKimiLimits.maxTokens
+        }
+      },
+      nvidia: {
+        configured: !!configState.nvidiaCredentials,
+        model: lastNvidiaModel,
+        preferredModel: configState.nvidiaPreferredModel,
+        usage: lastNvidiaUsage,
+        accumulatedUsage: lastNvidiaAccumulatedUsage || null,
+        limits: {
+          maxTokens: lastNvidiaLimits.maxTokens
+        }
+      },
+      ollama: {
+        configured: !!configState.ollamaConfig.model,
+        host: configState.ollamaConfig.host,
+        model: configState.ollamaConfig.model,
+        preferredModel: configState.ollamaConfig.model,
+        usage: lastOllamaUsage,
+        accumulatedUsage: lastOllamaAccumulatedUsage || null
+      }
+    },
+    system: {
+      web: {
+        search: {
+          brave_api_key_configured: !!configState.systemConfig?.web?.search?.brave_api_key
+        }
+      }
+    }
+  };
+}
+
+export function buildCatalogSnapshot(runtimeState, providersConfig = {}) {
+  const { lastOllamaStatus } = runtimeState;
+  const providerLabels = {
+    anthropic: 'Anthropic',
+    'claude-code': 'Claude Code',
+    'openai-codex': 'OpenAI Codex',
+    kimi: 'Kimi',
+    nvidia: 'NVIDIA',
+    ollama: 'Ollama'
+  };
+
+  const getProviderModels = (id) => {
+    const cfg = providersConfig[id];
+    return cfg?.models || [];
+  };
+
+  const isProviderEnabled = (id) => {
+    const cfg = providersConfig[id];
+    return cfg ? cfg.enabled !== false : true;
+  };
+
+  return {
+    providers: [
+      {
+        id: 'anthropic',
+        label: providerLabels.anthropic,
+        enabled: isProviderEnabled('anthropic'),
+        models: getProviderModels('anthropic')
+      },
+      {
+        id: 'claude-code',
+        label: providerLabels['claude-code'],
+        enabled: isProviderEnabled('claude-code'),
+        models: getProviderModels('claude-code')
+      },
+      {
+        id: 'openai-codex',
+        label: providerLabels['openai-codex'],
+        enabled: isProviderEnabled('openai-codex'),
+        models: getProviderModels('openai-codex')
+      },
+      {
+        id: 'kimi',
+        label: providerLabels.kimi,
+        enabled: isProviderEnabled('kimi'),
+        models: getProviderModels('kimi')
+      },
+      {
+        id: 'nvidia',
+        label: providerLabels.nvidia,
+        enabled: isProviderEnabled('nvidia'),
+        models: getProviderModels('nvidia')
+      },
+      {
+        id: 'ollama',
+        label: providerLabels.ollama,
+        enabled: isProviderEnabled('ollama'),
+        models: lastOllamaStatus?.models || [],
+        reachable: lastOllamaStatus?.reachable ?? null,
+        error: lastOllamaStatus?.error || null
+      }
+    ].filter(p => p.enabled)
+  };
+}

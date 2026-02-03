@@ -1,22 +1,27 @@
 import Bunnix, { Show, useMemo } from "@bunnix/core";
 import { Table, VStack, Text, Icon, Button } from "@bunnix/components";
-import { settings, updateProviders } from "../state/settings";
-import { selectModel } from "../state/models";
+import { providersConfig } from "../state/config";
+import { providersCatalog } from "../state/catalog";
+import { send } from "../ws/client";
 
 export default function ProviderModelsPanel({ providerId }) {
-  const provider = useMemo([settings, providerId], (sett, id) => {
-    if (!sett) return null;
-    if (!sett.providers) return null;
-    return sett.providers[id];
+  const provider = useMemo([providersCatalog, providerId], (catalog, id) => {
+    if (!catalog) return null;
+    return catalog.find((p) => p.id === id) || null;
   });
 
-  const models = useMemo([provider], (p) => {
+  const providerConfig = useMemo([providersConfig, providerId], (cfg, id) => {
+    if (!cfg) return null;
+    return cfg[id] || null;
+  });
+
+  const models = useMemo([provider, providerConfig], (p, cfg) => {
     if (!p) return [];
     return (
       p.models?.map((m) => ({
         id: m,
         providerId: p.id,
-        inUse: p.preferredModel === m,
+        inUse: cfg?.preferredModel === m,
       })) ?? []
     );
   });
@@ -27,8 +32,7 @@ export default function ProviderModelsPanel({ providerId }) {
   });
 
   const handleChangeModel = (modelId) => {
-    selectModel(modelId, providerId.get());
-    updateProviders();
+    send({ type: "setModel", model: modelId, provider: providerId.get() });
   }
 
   return VStack(

@@ -1,5 +1,5 @@
 import Bunnix, { ForEach, Show, useRef, useEffect } from "@bunnix/core";
-import { messages, isTyping, messagesStore } from "./state/messages.js";
+import { messages, processingState, sessionStore } from "./state/session.js";
 import { MessageItem } from "./components/MessageItem.js";
 import {
   Button,
@@ -19,7 +19,7 @@ const { span } = Bunnix;
 function ChatMessages() {
   const anchorRef = useRef(null);
   const msgs = messages.map((m) => m);
-  const typing = isTyping.map((t) => t);
+  const typing = processingState.map((state) => state === "processing");
 
   const handleScroll = () => {
     if (anchorRef.current) {
@@ -30,7 +30,7 @@ function ChatMessages() {
   useEffect((state) => {
     if (!state) return;
     handleScroll();
-  }, messagesStore.state);
+  }, sessionStore.state);
 
   return Container({ class: "h-full overflow-y-auto p-md" }, [
     ForEach(msgs, "id", (msg) => MessageItem({ msg })),

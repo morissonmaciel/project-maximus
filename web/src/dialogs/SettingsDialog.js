@@ -10,22 +10,26 @@ import SettingsNotificationsPage from "../pages/SettingsNotificationsPage";
 import SettingsProviderPage from "../pages/SettingsProviderPage";
 import SettingsMemoryPage from "../pages/SettingsMemoryPage";
 import SettingsSkillsPage from "../pages/SettingsSkillsPage";
-
-const sidebarItems = [
-  { id: "general", label: "General", icon: "icon-gear" },
-  { id: "notifications", label: "Notifications", icon: "icon-bell" },
-  { id: "providers", isHeader: true, label: "Providers" },
-  { id: "provider-anthropic", label: "Anthropic" },
-  { id: "provider-claude-code", label: "Claude Code" },
-  { id: "provider-openai-codex", label: "OpenAI Codex" },
-  { id: "provider-ollama", label: "Ollama" },
-  { id: "memory-skills", isHeader: true, label: "Memory & Skills" },
-  { id: "memory", label: "Memory", icon: "icon-cube" },
-  { id: "skills", label: "Skills", icon: "icon-lamp" },
-];
+import { providersCatalog } from "../state/catalog";
 
 export default function SettingsDialog() {
-  const selectedItem = useState("provider-claude-code");
+  const selectedItem = useState("general");
+  const providerItems = useMemo([providersCatalog], (catalog) => {
+    const providers = (catalog || []).map((p) => ({
+      id: `provider-${p.id}`,
+      label: p.label || p.id
+    }));
+    return [
+      { id: "general", label: "General", icon: "icon-gear" },
+      { id: "notifications", label: "Notifications", icon: "icon-bell" },
+      { id: "providers", isHeader: true, label: "Providers" },
+      ...providers,
+      { id: "memory-skills", isHeader: true, label: "Memory & Skills" },
+      { id: "memory", label: "Memory", icon: "icon-cube" },
+      { id: "skills", label: "Skills", icon: "icon-lamp" }
+    ];
+  });
+
   const providerId = useMemo([selectedItem],
     (selected) => selected.includes("provider") ?
       selected.replace("provider-", "")
@@ -47,7 +51,7 @@ export default function SettingsDialog() {
       verticalAlignment: "top"
     },
     Sidebar({
-      items: sidebarItems,
+      items: providerItems,
       selection: selectedItem,
       onItemSelect: handleSelection
     }),

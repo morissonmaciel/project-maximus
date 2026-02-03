@@ -3,13 +3,12 @@ import { Container, VStack, PageSection, Text } from "@bunnix/components";
 import { ProviderAuthStatePanel } from "../panels/ProviderAuthStatePanel";
 import { ProviderLimitsPanel } from "../panels/ProviderLimitsPanel";
 import ProviderModelsPanel from "../panels/ProviderModelsPanel";
-import { settings } from "../state/settings";
+import { providersCatalog } from "../state/catalog";
 
 export default function SettingsProviderPage({ providerId }) {
-  const provider = useMemo([settings, providerId], (sett, id) => {
-    if (!sett) return null;
-    if (!sett.providers) return null;
-    return sett.providers[id];
+  const provider = useMemo([providersCatalog, providerId], (catalog, id) => {
+    if (!catalog) return null;
+    return catalog.find((p) => p.id === id) || null;
   });
 
   const providerName = useMemo([provider], (p) => {

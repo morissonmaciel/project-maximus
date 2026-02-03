@@ -117,10 +117,18 @@ export async function runAnthropicLoop({
           content: JSON.stringify(failure)
         });
         ws.send(JSON.stringify({
-          type: 'toolResult',
-          name: providerToolName,
+          type: 'sessionPatch',
+          op: 'toolStart',
           toolCallId,
-          success: false
+          toolName: providerToolName,
+          reason: toolUse.input?.reason || null
+        }));
+        ws.send(JSON.stringify({
+          type: 'sessionPatch',
+          op: 'toolEnd',
+          toolCallId,
+          success: false,
+          result: failure
         }));
         continue;
       }
@@ -128,9 +136,10 @@ export async function runAnthropicLoop({
       const reason = toolUse.input?.reason || null;
 
       ws.send(JSON.stringify({
-        type: 'toolCall',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolStart',
         toolCallId,
+        toolName: providerToolName,
         reason
       }));
 
@@ -155,10 +164,11 @@ export async function runAnthropicLoop({
       }
 
       ws.send(JSON.stringify({
-        type: 'toolResult',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolEnd',
         toolCallId,
-        success
+        success,
+        result: normalized
       }));
 
       if (memoryStore) {
@@ -249,10 +259,18 @@ export async function runOpenAICodexLoop({
           message: `${failure.error} ${failure.recommendation}`
         }));
         ws.send(JSON.stringify({
-          type: 'toolResult',
-          name: providerToolName,
+          type: 'sessionPatch',
+          op: 'toolStart',
           toolCallId,
-          success: false
+          toolName: providerToolName,
+          reason: call.input?.reason || null
+        }));
+        ws.send(JSON.stringify({
+          type: 'sessionPatch',
+          op: 'toolEnd',
+          toolCallId,
+          success: false,
+          result: failure
         }));
 
         toolResults.push({
@@ -266,9 +284,10 @@ export async function runOpenAICodexLoop({
       const reason = call.input?.reason || null;
 
       ws.send(JSON.stringify({
-        type: 'toolCall',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolStart',
         toolCallId,
+        toolName: providerToolName,
         reason
       }));
 
@@ -293,10 +312,11 @@ export async function runOpenAICodexLoop({
       }
 
       ws.send(JSON.stringify({
-        type: 'toolResult',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolEnd',
         toolCallId,
-        success
+        success,
+        result: normalized
       }));
 
       if (memoryStore) {
@@ -390,10 +410,18 @@ export async function runKimiLoop({
           message: `${failure.error} ${failure.recommendation}`
         }));
         ws.send(JSON.stringify({
-          type: 'toolResult',
-          name: providerToolName,
+          type: 'sessionPatch',
+          op: 'toolStart',
           toolCallId,
-          success: false
+          toolName: providerToolName,
+          reason: call.input?.reason || null
+        }));
+        ws.send(JSON.stringify({
+          type: 'sessionPatch',
+          op: 'toolEnd',
+          toolCallId,
+          success: false,
+          result: failure
         }));
 
         toolResults.push({
@@ -407,9 +435,10 @@ export async function runKimiLoop({
       const reason = call.input?.reason || null;
 
       ws.send(JSON.stringify({
-        type: 'toolCall',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolStart',
         toolCallId,
+        toolName: providerToolName,
         reason
       }));
 
@@ -434,10 +463,11 @@ export async function runKimiLoop({
       }
 
       ws.send(JSON.stringify({
-        type: 'toolResult',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolEnd',
         toolCallId,
-        success
+        success,
+        result: normalized
       }));
 
       if (memoryStore) {
@@ -528,10 +558,18 @@ export async function runNvidiaLoop({
           message: `${failure.error} ${failure.recommendation}`
         }));
         ws.send(JSON.stringify({
-          type: 'toolResult',
-          name: providerToolName,
+          type: 'sessionPatch',
+          op: 'toolStart',
           toolCallId,
-          success: false
+          toolName: providerToolName,
+          reason: call.input?.reason || null
+        }));
+        ws.send(JSON.stringify({
+          type: 'sessionPatch',
+          op: 'toolEnd',
+          toolCallId,
+          success: false,
+          result: failure
         }));
 
         toolResults.push({
@@ -545,9 +583,10 @@ export async function runNvidiaLoop({
       const reason = call.input?.reason || null;
 
       ws.send(JSON.stringify({
-        type: 'toolCall',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolStart',
         toolCallId,
+        toolName: providerToolName,
         reason
       }));
 
@@ -572,10 +611,11 @@ export async function runNvidiaLoop({
       }
 
       ws.send(JSON.stringify({
-        type: 'toolResult',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolEnd',
         toolCallId,
-        success
+        success,
+        result: normalized
       }));
 
       if (memoryStore) {
@@ -650,10 +690,18 @@ export async function runOllamaLoop({
           message: `${failure.error} ${failure.recommendation}`
         }));
         ws.send(JSON.stringify({
-          type: 'toolResult',
-          name: providerToolName,
+          type: 'sessionPatch',
+          op: 'toolStart',
           toolCallId,
-          success: false
+          toolName: providerToolName,
+          reason: call.input?.reason || null
+        }));
+        ws.send(JSON.stringify({
+          type: 'sessionPatch',
+          op: 'toolEnd',
+          toolCallId,
+          success: false,
+          result: failure
         }));
         toolMessages.push({
           role: 'tool',
@@ -666,9 +714,10 @@ export async function runOllamaLoop({
       const reason = call.input?.reason || null;
 
       ws.send(JSON.stringify({
-        type: 'toolCall',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolStart',
         toolCallId,
+        toolName: providerToolName,
         reason
       }));
 
@@ -693,10 +742,11 @@ export async function runOllamaLoop({
       }
 
       ws.send(JSON.stringify({
-        type: 'toolResult',
-        name: providerToolName,
+        type: 'sessionPatch',
+        op: 'toolEnd',
         toolCallId,
-        success
+        success,
+        result: normalized
       }));
 
       if (memoryStore) {

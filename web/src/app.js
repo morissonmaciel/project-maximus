@@ -17,7 +17,7 @@ document.addEventListener('click', requestNotificationPermission, { once: true }
 
 /**
  * Main App component
- * Handles UI composition only - WebSocket handlers are in ad-hoc/ folder
+ * Handles UI composition only - WebSocket handlers are installed in ws/handlers.js
  */
 export function App() {
   return (

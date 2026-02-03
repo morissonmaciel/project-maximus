@@ -50,6 +50,8 @@ export function getConfigState() {
 
 export const buildStatusSnapshot = (runtimeState) => providerHelpers.buildStatusSnapshot(configState, runtimeState, getProvidersConfig());
 export const buildConfigurationSnapshot = (runtimeState, gatewayState) => providerHelpers.buildConfigurationSnapshot({ configState, runtimeState, gatewayState }, getProvidersConfig());
+export const buildConfigSnapshot = (runtimeState) => providerHelpers.buildConfigSnapshot(configState, runtimeState);
+export const buildCatalogSnapshot = (runtimeState) => providerHelpers.buildCatalogSnapshot(runtimeState, getProvidersConfig());
 export const buildSettingsSnapshot = (runtimeState) => providerHelpers.buildSettingsSnapshot(configState, runtimeState, getProvidersConfig());
 export const refreshOllamaStatus = async () => runtimeHelpers.refreshOllamaStatus(configState.ollamaClient);
 export const getLastOllamaStatus = () => runtimeHelpers.getLastOllamaStatus();

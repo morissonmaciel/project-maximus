@@ -1,16 +1,35 @@
-import Bunnix from '@bunnix/core';
-import { openModelSelector } from '../state/models.js';
-import { isConnected, provider, providerReady, latency, currentModel, connectionStore } from '../state/connection.js';
+import Bunnix, { useMemo } from '@bunnix/core';
+import { isConnected, latency, currentProvider, currentModel, providersConfig } from '../state/config.js';
+import { providersCatalog } from '../state/catalog.js';
 
 const { div, span } = Bunnix;
 
 // Status Bar Component (footer below input)
 export function StatusBar() {
-  const prov = provider.map(p => p || 'Not selected');
-  const ready = providerReady.map(r => r);
+  const prov = currentProvider.map(p => p || 'Not selected');
   const ping = latency.map(l => l ? `${Math.round(l)}ms` : '--');
   const model = currentModel.map(m => m || 'Unknown');
   const connected = isConnected.map(c => c);
+
+  const providerData = useMemo([providersCatalog, currentProvider], (catalog, providerId) => {
+    if (!providerId) return null;
+    return (catalog || []).find(p => p.id === providerId) || null;
+  });
+
+  const providerConfig = useMemo([providersConfig, currentProvider], (cfg, providerId) => {
+    if (!providerId) return null;
+    return cfg?.[providerId] || null;
+  });
+
+  const ready = useMemo([providerData, providerConfig, currentProvider], (data, cfg, providerId) => {
+    if (!providerId) return false;
+    const enabled = data?.enabled !== false;
+    const configured = cfg?.configured === true || providerId === 'ollama';
+    if (providerId === 'ollama') {
+      return enabled && data?.reachable === true;
+    }
+    return enabled && configured;
+  });
 
   const statusText = Bunnix.Compute([connected, ready], (c, r) => {
     if (!c) return 'Disconnected';
@@ -23,14 +42,11 @@ export function StatusBar() {
       span({ class: 'stat-label' }, 'WS:'),
       span({ class: 'stat-value' }, connected.map(c => c ? 'connected' : 'disconnected'))
     ),
-    div({ class: 'stat stat-clickable', click: () => connectionStore.openProviderSelector() },
+    div({ class: 'stat' },
       span({ class: 'stat-label' }, 'Provider:'),
       span({ class: 'stat-value stat-value-highlight' }, prov)
     ),
-    div({
-      class: 'stat stat-clickable',
-      click: () => openModelSelector(provider.get(), currentModel.get())
-    },
+    div({ class: 'stat' },
       span({ class: 'stat-label' }, 'Model:'),
       span({ class: 'stat-value stat-value-highlight' }, model)
     ),

@@ -44,6 +44,10 @@ export const MessageTypes = {
   MODEL_SET: 'modelSet',
   OLLAMA_MODEL_SET: 'ollamaModelSet',
   BRAVE_API_KEY_SET: 'braveApiKeySet',
+  CONFIG: 'config',
+  CATALOG: 'catalog',
+  SESSION: 'session',
+  SESSION_PATCH: 'sessionPatch',
 
   // Memory & Docs
   DOCS_LIST: 'docsList',

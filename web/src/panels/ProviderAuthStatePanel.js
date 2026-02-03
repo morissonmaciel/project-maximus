@@ -1,19 +1,25 @@
 import { useMemo } from "@bunnix/core";
 import { Button, Table, Text } from "@bunnix/components";
-import { connectionStore } from "../state/connection";
+import { providersConfig } from "../state/config";
+import { providersCatalog } from "../state/catalog";
 
 export function ProviderAuthStatePanel({ providerId }) {
-  const provider = useMemo([connectionStore.state, providerId], (state, id) => {
-    if (!id || !state.providerList) return null;
-    return state.providerList.find((provider) => provider.id === id) ?? null;
+  const provider = useMemo([providersCatalog, providerId], (catalog, id) => {
+    if (!id || !catalog) return null;
+    return catalog.find((provider) => provider.id === id) ?? null;
   });
 
-  const row = useMemo([providerId, provider], (id, item) => {
+  const providerConfig = useMemo([providersConfig, providerId], (cfg, id) => {
+    if (!id || !cfg) return null;
+    return cfg[id] ?? null;
+  });
+
+  const row = useMemo([providerId, provider, providerConfig], (id, item, cfg) => {
     const label = item?.label || item?.name || item?.id || id || "Provider";
     return {
       id: id ?? label,
       provider: label,
-      status: item?.configured ? "Configured" : "Not Configured",
+      status: cfg?.configured ? "Configured" : "Not Configured",
       actions: "Edit",
     };
   });

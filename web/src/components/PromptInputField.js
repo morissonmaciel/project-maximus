@@ -8,9 +8,9 @@ import {
   PopoverMenu,
   VStack,
 } from "@bunnix/components";
-import { isConnected } from "../state/connection";
-import { addMessage, isTyping } from "../state/messages";
-import { send } from "../lib/websocket";
+import { isConnected } from "../state/config";
+import { addMessage, processingState } from "../state/session";
+import { send } from "../ws/client";
 
 const attachmentOptions = [
   { id: "file", title: "File", icon: "icon-file" },
@@ -21,8 +21,8 @@ const { form } = Bunnix;
 
 export default function PromptInputField() {
   const inputValue = useState("");
-  const busy = useMemo([isTyping, isConnected], (typing, connected) => {
-    return !connected || (connected && typing);
+  const busy = useMemo([processingState, isConnected], (state, connected) => {
+    return !connected || (connected && state === "processing");
   });
 
   const handleSubmit = (e) => {
@@ -31,7 +31,7 @@ export default function PromptInputField() {
     if (!text || busy.get()) return;
 
     addMessage("user", text);
-    send({ type: "chat", messages: [{ role: "user", content: text }] });
+    send({ type: "sendMessage", content: text });
     inputValue.set("");
   };
 

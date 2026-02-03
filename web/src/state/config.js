@@ -1,23 +1,24 @@
 import { createStore } from '@bunnix/redux';
+import { send } from '../ws/client.js';
 
-// WebSocket send function (set by app.js)
-let wsSend = null;
+export const configStore = createStore({
+  // Connection state
+  isConnected: false,
+  latency: 0,
 
-export function setWsSend(fn) {
-  wsSend = fn;
-}
+  // User config snapshot (source of truth from gateway)
+  currentProvider: null,
+  currentModel: null,
+  providers: {},
+  system: {},
 
-function send(msg) {
-  if (wsSend) wsSend(msg);
-}
-
-export const settingsStore = createStore({
+  // Settings dialog UI state
   isOpen: false,
-  activePanel: 'anthropic', // 'anthropic', 'openai-codex', 'kimi', 'nvidia', 'ollama', 'web', 'memory'
-  authTab: 'apikey', // 'apikey', 'oauth'
+  activePanel: 'anthropic',
+  authTab: 'apikey',
 
   // OAuth state
-  oauthStep: 1, // 1 or 2
+  oauthStep: 1,
   oauthUrl: null,
   oauthCode: '',
 
@@ -32,16 +33,22 @@ export const settingsStore = createStore({
   nvidiaApiKey: '',
   braveApiKey: '',
 
-  // Settings data from gateway
-  settings: null,
-  providers: null,
-  docs: [],
-
   // Loading states
   isSaving: false,
   isStartingOAuth: false,
-  isCompletingOAuth: false,
+  isCompletingOAuth: false
 }, {
+  setConnected: (state, { value }) => ({ ...state, isConnected: value }),
+  setLatency: (state, { value }) => ({ ...state, latency: value }),
+
+  setConfig: (state, { config }) => ({
+    ...state,
+    currentProvider: config?.currentProvider ?? null,
+    currentModel: config?.currentModel ?? null,
+    providers: config?.providers || {},
+    system: config?.system || {}
+  }),
+
   open: (state) => ({ ...state, isOpen: true }),
   close: (state) => ({
     ...state,
@@ -74,17 +81,11 @@ export const settingsStore = createStore({
   setNvidiaApiKey: (state, { value }) => ({ ...state, nvidiaApiKey: value }),
   setBraveApiKey: (state, { value }) => ({ ...state, braveApiKey: value }),
 
-  // Data
-  setSettings: (state, { settings }) => ({ ...state, settings }),
-  setProviders: (state, { providers }) => ({ ...state, providers }),
-  setDocs: (state, { docs }) => ({ ...state, docs }),
-
   // Loading states
   setSaving: (state, { value }) => ({ ...state, isSaving: value }),
   setStartingOAuth: (state, { value }) => ({ ...state, isStartingOAuth: value }),
   setCompletingOAuth: (state, { value }) => ({ ...state, isCompletingOAuth: value }),
 
-  // Reset auth panels
   resetAuth: (state) => ({
     ...state,
     oauthStep: 1,
@@ -102,37 +103,32 @@ export const settingsStore = createStore({
   })
 });
 
-// Export derived atoms
-export const isSettingsOpen = settingsStore.state.map(s => s.isOpen);
-export const activeSettingsPanel = settingsStore.state.map(s => s.activePanel);
-export const authTab = settingsStore.state.map(s => s.authTab);
-export const settings = settingsStore.state.map(s => s.settings);
-export const providers = settingsStore.state.map(s => s.providers);
-export const docs = settingsStore.state.map(s => s.docs);
-export const currentModelFromSettings = settingsStore.state.map(s => s.settings?.currentModel || null);
+// Reactive selectors
+export const isConnected = configStore.state.map(s => s.isConnected);
+export const latency = configStore.state.map(s => s.latency);
+export const currentProvider = configStore.state.map(s => s.currentProvider);
+export const currentModel = configStore.state.map(s => s.currentModel);
+export const providersConfig = configStore.state.map(s => s.providers);
+export const systemConfig = configStore.state.map(s => s.system);
+export const isSettingsOpen = configStore.state.map(s => s.isOpen);
+export const activeSettingsPanel = configStore.state.map(s => s.activePanel);
+export const authTab = configStore.state.map(s => s.authTab);
 
 // Helper functions
 export function openSettings() {
-  settingsStore.open();
-  // Fetch data when opening settings
-  send({ type: 'getSettings' });
-  send({ type: 'getProviders' });
-  send({ type: 'getDocs' });
-}
-
-export function updateProviders() {
-  send({ type: 'getSettings' });
-  send({ type: 'getProviders' });
+  configStore.open();
+  send({ type: 'getConfig' });
+  send({ type: 'getCatalog' });
 }
 
 export function closeSettings() {
-  settingsStore.close();
+  configStore.close();
 }
 
 export function setSettingsPanel(panel) {
-  settingsStore.setPanel({ panel });
+  configStore.setPanel({ panel });
 }
 
 export function setAuthTab(tab) {
-  settingsStore.setAuthTab({ tab });
+  configStore.setAuthTab({ tab });
 }

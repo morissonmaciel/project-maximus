@@ -1,6 +1,5 @@
 import Bunnix from "@bunnix/core";
-import { isConnected, providerReady } from "../state/connection.js";
-import { openSettings } from "../state/settings.js";
+import { openSettings } from "../state/config.js";
 import LogoSmall from "../images/maximus-small.png";
 import { Button, HStack, Icon, NavigationBar, showDialog, Text } from "@bunnix/components";
 import SettingsDialog from "../dialogs/SettingsDialog.js";
@@ -9,9 +8,6 @@ const { img } = Bunnix;
 
 // Status Header Component
 export function Header() {
-  const connected = isConnected.map((c) => c);
-  const ready = providerReady.map((r) => r);
-
   const handleSettingsClick = () => {
     showDialog({
       title: "Settings",

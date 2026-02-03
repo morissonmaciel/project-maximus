@@ -46,7 +46,10 @@ export class ClientMessenger {
   }
 
   pushMessage(content, meta = {}) {
-    this.send(MessageTypes.PUSH_MESSAGE, { role: 'user', content, meta });
+    this.send(MessageTypes.SESSION_PATCH, {
+      op: 'addMessage',
+      message: { role: 'user', content, meta }
+    });
   }
 
   history(messages) {
@@ -117,6 +120,22 @@ export class ClientMessenger {
 
   providers(providersList) {
     this.send(MessageTypes.PROVIDERS, { providers: providersList });
+  }
+
+  config(config) {
+    this.send(MessageTypes.CONFIG, config);
+  }
+
+  catalog(catalog) {
+    this.send(MessageTypes.CATALOG, catalog);
+  }
+
+  session(session) {
+    this.send(MessageTypes.SESSION, session);
+  }
+
+  sessionPatch(patch) {
+    this.send(MessageTypes.SESSION_PATCH, patch);
   }
 
   providerSet(provider) {
